@@ -823,11 +823,12 @@ def api_get_todays_leave(request, schema_name):
                 _valid_by_class[_cta.school_class_id] = (
                     _class_timetable_periods(_cta.timetable)
                 )
-        absent_periods = [
-            ap for ap in absent_periods
-            if (ap.day_of_week, ap.period_order)
-                in _valid_by_class.get(ap.school_class_id, set())
-        ]
+        # FIXTURE_FALSE_EMPTY_FIX_V2: keep every PTA row for a
+        # teacher on leave today. The V1 orphan filter dropped
+        # rows whenever the class timetable JSON was out of
+        # sync with the PTA rows, hiding teachers who
+        # genuinely had a period today.
+        absent_periods = list(absent_periods)
 
         # BUG-6 fix: filter orphan PTA rows before treating a
         # teacher as busy at a period. A row whose (day, period)
@@ -855,8 +856,13 @@ def api_get_todays_leave(request, schema_name):
         )
         busy_by_period = {}
         for _tid, _porder, _cid in busy_rows:
+            # FIXTURE_FALSE_EMPTY_FIX_V1: mirror of the absent-period
+            # filter above. If the class has no current timetable we
+            # cannot decide the period is invalid, so we keep the
+            # teacher marked as busy rather than pretending they are
+            # free and offering them as a substitute.
             _valid = _busy_valid_map.get(_cid)
-            if _valid is None or (today_dow, _porder) not in _valid:
+            if _valid is not None and (today_dow, _porder) not in _valid:
                 continue
             busy_by_period.setdefault(_porder, set()).add(_tid)
 

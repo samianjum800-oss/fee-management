@@ -740,6 +740,15 @@ def extract_item_sales_from_remarks(remarks):
 
 def get_student_list_context(request, schema_name):
     tenant = get_tenant(request, schema_name)
+    # STUDENT_LIST_INTERMITTENT_EMPTY_FIX_V1: same tenant lock as
+    # the staff list. Without this, the very first request to a
+    # pooled worker could query the public schema and render the
+    # 'No students found' empty state until the next refresh.
+    try:
+        from django.db import connection as _db_conn
+        _db_conn.set_tenant(tenant)
+    except Exception:
+        pass
     query = request.GET.get('q', '')
     grade = request.GET.get('grade', '')
     section = request.GET.get('section', '')
@@ -786,17 +795,24 @@ def get_student_list_context(request, schema_name):
         total_pending_all = students.aggregate(total_pending=Sum('pending_amount'))['total_pending'] or Decimal('0')
         paginator = Paginator(students, 20)
         page_obj = paginator.get_page(page_number)
+        # STUDENT_LIST_LAZY_FIX_V1
+        page_obj.object_list = list(page_obj.object_list)
 
         # Get distinct grades, sections, and active classes for filters
         grades = list(Student.objects.values_list('grade', flat=True).distinct().order_by('grade'))
         sections = list(Student.objects.values_list('section', flat=True).distinct().order_by('section'))
         status_choices = Student.STATUS_CHOICES
         total_active = Student.objects.filter(status='active').count()
-        classes = SchoolClass.objects.filter(is_active=True).select_related('wing_category').order_by('name', 'section')
-        categories = WingCategory.objects.filter(
+        # STUDENT_LIST_LAZY_FIX_V1
+        classes = list(
+            SchoolClass.objects.filter(is_active=True)
+            .select_related('wing_category')
+            .order_by('name', 'section')
+        )
+        categories = list(WingCategory.objects.filter(
             is_active=True,
             parent__isnull=False,
-        ).select_related('parent').order_by('parent__name', 'name') if tenant.tenant_type == 'wing_school' else []
+        ).select_related('parent').order_by('parent__name', 'name')) if tenant.tenant_type == 'wing_school' else []
         if tenant.tenant_type == 'wing_school':
             categories = list(categories)
             parent_ids = {category.parent_id for category in categories}

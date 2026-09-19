@@ -20,6 +20,7 @@ from functools import wraps
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 
 from ..models import (
     SchoolClient, Staff, StaffCredential, StaffBiometricCredential,
@@ -35,6 +36,7 @@ from axis_saas.utils.class_display import get_class_display_name
 
 # ========== STAFF LIST ==========
 
+@never_cache
 @require_tenant_type(['school'])
 @require_school_feature('staff_management')
 def staff_list(request, schema_name):
@@ -48,6 +50,7 @@ def staff_list(request, schema_name):
     context = get_staff_list_context(request, schema_name)
     return render(request, 'tenant/staff_list.html', context)
 
+@never_cache
 @require_tenant_type(['school'])
 @require_school_feature('staff_management')
 def mobile_staff_list(request, schema_name):
@@ -69,6 +72,20 @@ def get_staff_list_context(request, schema_name):
     section = request.GET.get('section')
 
     tenant = get_tenant(request, schema_name)
+    # STAFF_LIST_INTERMITTENT_EMPTY_FIX_V1: force the connection
+    # into the tenant's schema before any Staff / SchoolClass query
+    # runs. On an idle or freshly-pooled connection the search_path
+    # can still point at `public` for the very first request of a
+    # worker, which made the staff list render the empty-state block
+    # until the user hit refresh a second time. `schema_context`
+    # below only sets the schema on entry; this call guarantees the
+    # tenant is also stored on the connection so nothing downstream
+    # can race it back to public.
+    try:
+        from django.db import connection as _db_conn
+        _db_conn.set_tenant(tenant)
+    except Exception:
+        pass
     query = request.GET.get('q', '')
     department = request.GET.get('department', '')
     status = request.GET.get('status', '')

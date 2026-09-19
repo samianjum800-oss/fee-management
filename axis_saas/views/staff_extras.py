@@ -13,6 +13,7 @@ from ..models import (
     Staff, SchoolClass, Subject, ClassSubject, StaffCredential,
     LeaveRequest, LeaveSuspension,
 )
+from axis_saas.utils.class_display import get_class_display_name
 from .helpers import (
     get_tenant, require_school_feature, require_tenant_type,
 )
@@ -32,10 +33,16 @@ def staff_subject_assignments_api(request, schema_name):
             .order_by('school_class__name', 'school_class__section',
                       'subject__name')
         )
+        tenant = get_tenant(request, schema_name)
+        def _cls_label(c):
+            try:
+                return get_class_display_name(c, tenant.tenant_type)
+            except Exception:
+                return str(c)
         rows = [{
             'id': a.id,
             'class_id': a.school_class_id,
-            'class_name': str(a.school_class),
+            'class_name': _cls_label(a.school_class),
             'subject_id': a.subject_id,
             'subject_name': a.subject.name,
             'teacher_id': a.teacher_id,
@@ -176,9 +183,15 @@ def staff_class_teacher_management_api(request, schema_name):
                             'wing_category__parent')
             .order_by('name', 'section')
         )
+        tenant = get_tenant(request, schema_name)
+        def _cls_label(c):
+            try:
+                return get_class_display_name(c, tenant.tenant_type)
+            except Exception:
+                return str(c)
         rows = [{
             'id': c.id,
-            'name': str(c),
+            'name': _cls_label(c),
             'section': c.section or '',
             'wing': c.wing_category.name if c.wing_category_id else '',
             'wing_parent': (
@@ -192,11 +205,49 @@ def staff_class_teacher_management_api(request, schema_name):
             'student_count': c.students.count(),
         } for c in classes]
 
-        teachers = list(
-            Staff.objects.filter(status='active').order_by('full_name')
+        # STAFF_CLASS_TEACHER_FILTER_V1: only subject teachers are
+        # eligible to lead a class. Each candidate also carries the
+        # comma-separated subjects they teach and any class they
+        # already lead, so the picker can show why a change will
+        # silently reassign them.
+        _subj_teacher_ids = set(
+            ClassSubject.objects
+            .filter(is_active=True, teacher__isnull=False)
+            .values_list('teacher_id', flat=True)
+            .distinct()
         )
+        teachers = list(
+            Staff.objects
+            .filter(status='active', id__in=_subj_teacher_ids)
+            .order_by('full_name')
+        )
+        _subs_by_teacher = {}
+        for _tid, _sname in (
+            ClassSubject.objects
+            .filter(teacher_id__in=_subj_teacher_ids, is_active=True)
+            .select_related('subject')
+            .values_list('teacher_id', 'subject__name')
+        ):
+            if _sname:
+                _subs_by_teacher.setdefault(_tid, set()).add(_sname)
+        _ct_of_by_teacher = {}
+        for _tid, _cname in (
+            SchoolClass.objects
+            .filter(class_teacher_id__in=_subj_teacher_ids,
+                    is_active=True)
+            .values_list('class_teacher_id', 'name')
+        ):
+            _ct_of_by_teacher.setdefault(_tid, []).append(_cname)
         candidates = [
-            {'id': t.id, 'name': t.full_name, 'job_title': t.job_title or ''}
+            {
+                'id': t.id,
+                'name': t.full_name,
+                'job_title': t.job_title or '',
+                'subjects': ', '.join(
+                    sorted(_subs_by_teacher.get(t.id, set()))
+                ),
+                'is_class_teacher_of': _ct_of_by_teacher.get(t.id, []),
+            }
             for t in teachers
         ]
 
@@ -249,6 +300,12 @@ def staff_assign_class_teacher_api(request, schema_name):
 
         school_class.save(update_fields=['class_teacher'])
 
+        subjects = ''
+        if school_class.class_teacher_id:
+            subs = ClassSubject.objects.filter(
+                teacher_id=school_class.class_teacher_id, is_active=True,
+            ).values_list('subject__name', flat=True)
+            subjects = ', '.join(sorted(s for s in subs if s))
         return JsonResponse({
             'ok': True,
             'class_id': school_class.id,
@@ -257,6 +314,7 @@ def staff_assign_class_teacher_api(request, schema_name):
                 school_class.class_teacher.full_name
                 if school_class.class_teacher_id else ''
             ),
+            'class_teacher_subjects': subjects,
         })
 
 

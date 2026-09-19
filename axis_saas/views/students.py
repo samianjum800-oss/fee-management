@@ -20,6 +20,7 @@ import json
 import re
 from functools import wraps
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.cache import never_cache
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from ..models import SchoolClient, Student, FeeStructure, FeeRecord, PaymentTransaction, SchoolFeeSettings, Product, ProductCategory
@@ -36,6 +37,7 @@ from django.urls import reverse   # ✅ Added for reverse redirects
 # a tenant with the 'students' feature disabled could still reach
 # this page by direct URL. Now gated the same way as the mobile
 # view and every other student-module view.
+@never_cache
 @require_tenant_type(['school'])
 @require_school_feature('students')
 def student_list(request, schema_name):
@@ -48,6 +50,7 @@ def student_list(request, schema_name):
     response['Expires'] = '0'
     return response
 
+@never_cache
 @require_tenant_type(['school'])
 @require_school_feature('students')
 def mobile_student_list(request, schema_name):
