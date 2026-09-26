@@ -209,7 +209,7 @@ def add_class(request, schema_name):
                 })
                 return redirect_with_cache_bust('classes_management', schema_name, extra_qs=_qs)
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -266,7 +266,7 @@ def edit_class(request, schema_name, class_id):
                 })
                 return redirect_with_cache_bust('classes_management', schema_name, extra_qs=_qs)
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -283,7 +283,7 @@ def delete_class(request, schema_name, class_id):
         return redirect_with_cache_bust('mobile_class_management', schema_name)
     if request.POST.get('return_to') == 'classes_management':
         return redirect_with_cache_bust('classes_management', schema_name)
-    return redirect_with_cache_bust('class_management', schema_name)
+    return redirect_with_cache_bust('teachers_management', schema_name)
 
 # ========== CRUD FOR SUBJECT ==========
 
@@ -322,7 +322,7 @@ def add_subject(request, schema_name):
             return redirect_with_cache_bust('mobile_class_management', schema_name)
         if request.POST.get('return_to') == 'classes_management':
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -358,7 +358,7 @@ def edit_subject(request, schema_name, subject_id):
             return redirect_with_cache_bust('mobile_class_management', schema_name)
         if request.POST.get('return_to') == 'classes_management':
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -375,7 +375,7 @@ def delete_subject(request, schema_name, subject_id):
         return redirect_with_cache_bust('mobile_class_management', schema_name)
         if request.POST.get('return_to') == 'classes_management':
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 # ========== ASSIGNMENT (ClassSubject) ==========
 
@@ -414,7 +414,7 @@ def assign_subject(request, schema_name):
             return redirect_with_cache_bust('mobile_class_management', schema_name)
         if request.POST.get('return_to') == 'classes_management':
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -450,7 +450,7 @@ def edit_assignment(request, schema_name, assignment_id):
             return redirect_with_cache_bust('mobile_class_management', schema_name)
         if request.POST.get('return_to') == 'classes_management':
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -467,7 +467,7 @@ def delete_assignment(request, schema_name, assignment_id):
         return redirect_with_cache_bust('mobile_class_management', schema_name)
         if request.POST.get('return_to') == 'classes_management':
             return redirect_with_cache_bust('classes_management', schema_name)
-        return redirect_with_cache_bust('class_management', schema_name)
+        return redirect_with_cache_bust('teachers_management', schema_name)
 
 
 @require_tenant_type(['school'])

@@ -12,6 +12,7 @@ from django_tenants.utils import schema_context
 
 from .models import SchoolClient
 
+from .views.teachers_management import (teachers_management_view, teachers_management_redirect)
 from .views import mobile_fee_structure, add_student, add_student_mobile, dashboard, debug_payments_api, defaulters, edit_student, family_payment, fee_collection, mobile_fee_collection, fee_receipt, mobile_fee_receipt, fee_settings, fee_status_api, fee_structure, manual_generate_api, manual_generate_single_api, reports, settings, student_fee_records_api, student_list, student_payments_api, student_current_fee_status_api, student_profile, student_search_api, stock_management, product_detail, mobile_stock_management, mobile_product_detail, add_category, delete_category, add_product, delete_product, sell_separately, mobile_sell_separately, mobile_dashboard, mobile_more, mobile_student_list, mobile_student_profile, mobile_defaulters, mobile_reports, mobile_fee_settings, mobile_settings, vouchers_list, mobile_vouchers_list, dismiss_notification, notifications_list_api, mark_notification_read_api, mark_all_notifications_read_api, global_search_api, product_list_api, student_list_api, receipt_list_api, fee_collection_list_api, sync_offline_student_api, class_management, mobile_class_management, add_class, edit_class, delete_class, add_subject, edit_subject, delete_subject, assign_subject, edit_assignment, delete_assignment, classes_management_view, class_detailed_view
 from .views.timetable import (
     timetable_management, api_update_calendar, api_add_holiday, api_delete_holiday,
@@ -356,7 +357,12 @@ urlpatterns = [
     path('portal/<slug:schema_name>/api/notifications/mark-all-read/', portal_wrapper(login_required_for_schema(mark_all_notifications_read_api)), name='mark_all_notifications_read_api'),
 
     # ===== CLASS & SUBJECT MANAGEMENT =====
-    path('portal/<slug:schema_name>/classes/', portal_wrapper(login_required_for_schema(class_management)), name='class_management'),
+    # TEACHERS_MANAGEMENT_V1: legacy /classes/ redirects to /teachers/
+    path('portal/<slug:schema_name>/classes/', portal_wrapper(login_required_for_schema(teachers_management_redirect)), name='class_management'),
+    path('portal/<slug:schema_name>/teachers/', portal_wrapper(login_required_for_schema(teachers_management_view)), name='teachers_management'),
+    path('portal/<slug:schema_name>/teachers/subjects/', portal_wrapper(login_required_for_schema(teachers_management_view)), {'active_tab': 'subjects'}, name='teachers_management_subjects'),
+    path('portal/<slug:schema_name>/teachers/assignments/', portal_wrapper(login_required_for_schema(teachers_management_view)), {'active_tab': 'assignments'}, name='teachers_management_assignments'),
+    path('portal/<slug:schema_name>/teachers/class-teachers/', portal_wrapper(login_required_for_schema(teachers_management_view)), {'active_tab': 'class-teachers'}, name='teachers_management_class_teachers'),
     path('portal/<slug:schema_name>/my-classes/', portal_wrapper(login_required_for_schema(classes_management_view)), name='classes_management'),
     path('portal/<slug:schema_name>/my-classes/<int:class_id>/', portal_wrapper(login_required_for_schema(class_detailed_view)), name='class_detailed'),
     # ===== CLASS_STAFF_MANAGEMENT_v1 =====

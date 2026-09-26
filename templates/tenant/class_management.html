@@ -5,6 +5,23 @@
 
 {% block extra_head %}
 <style>
+    /* ============================================================
+       CSS VARIABLE FALLBACKS
+       (agar base.html me define nahi hain to bhi page chalega)
+       ============================================================ */
+    :root {
+        --primary: #3b82f6;
+        --primary-dark: #2563eb;
+        --surface: #ffffff;
+        --surface-alt: #f9fafb;
+        --border: #e5e7eb;
+        --text: #111827;
+        --muted: #6b7280;
+        --radius: 12px;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+        --shadow: 0 10px 25px -5px rgba(0,0,0,.15), 0 8px 10px -6px rgba(0,0,0,.1);
+    }
+
     /* ---- Page header ---- */
     .page-header {
         display: flex;
@@ -22,15 +39,8 @@
         background-clip: text;
         color: transparent;
     }
-    .page-desc {
-        color: var(--muted);
-        margin: 0.2rem 0 0;
-    }
-    .header-actions {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
+    .page-desc { color: var(--muted); margin: .2rem 0 0; }
+    .header-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
 
     /* ---- KPI Grid ---- */
     .kpi-grid {
@@ -46,78 +56,46 @@
         padding: 1rem;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: .75rem;
         box-shadow: var(--shadow-sm);
-        transition: transform 0.2s;
+        transition: transform .2s, box-shadow .2s;
     }
-    .kpi-card:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow);
-    }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
     .kpi-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        flex-shrink: 0;
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; flex-shrink: 0;
     }
-    .kpi-icon.blue { background: #3b82f6; }
-    .kpi-icon.green { background: #10b981; }
+    .kpi-icon.blue   { background: #3b82f6; }
+    .kpi-icon.green  { background: #10b981; }
     .kpi-icon.orange { background: #f59e0b; }
     .kpi-icon.purple { background: #8b5cf6; }
     .kpi-info .kpi-label {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        color: var(--muted);
-        letter-spacing: 0.5px;
-        font-weight: 600;
+        font-size: .7rem; text-transform: uppercase;
+        color: var(--muted); letter-spacing: .5px; font-weight: 600;
     }
-    .kpi-info .kpi-value {
-        font-size: 1.4rem;
-        font-weight: 700;
-        line-height: 1.2;
-        color: var(--text);
-    }
-    .kpi-info .kpi-sub {
-        font-size: 0.65rem;
-        color: var(--muted);
-        margin-top: 0.1rem;
-    }
+    .kpi-info .kpi-value { font-size: 1.4rem; font-weight: 700; line-height: 1.2; color: var(--text); }
+    .kpi-info .kpi-sub   { font-size: .65rem; color: var(--muted); margin-top: .1rem; }
 
-    /* ---- Tab Navigation ---- */
+    /* ---- Tabs ---- */
     .tabs {
-        display: flex;
-        gap: 0.5rem;
+        display: flex; gap: .5rem;
         border-bottom: 2px solid var(--border);
         margin-bottom: 1.5rem;
     }
     .tab-btn {
-        padding: 0.5rem 1.2rem;
-        background: transparent;
-        border: none;
+        padding: .5rem 1.2rem;
+        background: transparent; border: none;
         border-bottom: 3px solid transparent;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--muted);
-        cursor: pointer;
-        transition: all 0.2s;
+        font-weight: 600; font-size: .9rem;
+        color: var(--muted); cursor: pointer;
+        transition: color .2s, border-color .2s;
     }
-    .tab-btn.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
-    }
-    .tab-btn:hover {
-        color: var(--text);
-    }
-    .tab-content {
-        display: none;
-    }
-    .tab-content.active {
-        display: block;
-    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn:hover  { color: var(--text); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     /* ---- Cards ---- */
     .card {
@@ -129,215 +107,173 @@
         margin-bottom: 1.5rem;
     }
     .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 1rem;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: .75rem 1rem;
         background: var(--surface-alt);
         border-bottom: 1px solid var(--border);
     }
-    .card-header h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
-    .card-header .actions {
-        display: flex;
-        gap: 0.5rem;
-    }
+    .card-header h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    .card-header .actions { display: flex; gap: .5rem; }
 
-    .table-responsive {
-        overflow-x: auto;
-    }
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
+    .table-responsive { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; }
     .data-table th, .data-table td {
-        padding: 0.65rem 0.75rem;
+        padding: .65rem .75rem;
         text-align: left;
         border-bottom: 1px solid var(--border);
-        font-size: 0.85rem;
+        font-size: .85rem;
     }
     .data-table th {
         background: var(--surface-alt);
-        font-weight: 600;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        color: var(--muted);
+        font-weight: 600; font-size: .7rem;
+        text-transform: uppercase; color: var(--muted);
     }
-    .action-btns {
-        display: flex;
-        gap: 0.3rem;
-        align-items: center;
-    }
+    .action-btns { display: flex; gap: .3rem; align-items: center; }
     .action-icon {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0.2rem;
-        color: var(--muted);
-        transition: 0.2s;
-        border-radius: 0.3rem;
-        display: inline-flex;
-        align-items: center;
+        background: none; border: none; cursor: pointer;
+        padding: .25rem; color: var(--muted);
+        transition: color .2s, background .2s;
+        border-radius: .3rem;
+        display: inline-flex; align-items: center; justify-content: center;
     }
-    .action-icon:hover {
-        color: var(--primary);
-        background: var(--surface-alt);
-    }
-    .empty-row {
-        text-align: center;
-        padding: 2rem;
-        color: var(--muted);
-    }
+    .action-icon:hover { color: var(--primary); background: var(--surface-alt); }
+    .empty-row { text-align: center; padding: 2rem; color: var(--muted); }
 
     .btn-sm {
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 2rem;
-        padding: 0.3rem 0.8rem;
-        font-size: 0.75rem;
-        cursor: pointer;
-        transition: 0.2s;
+        background: var(--primary); color: #fff; border: none;
+        border-radius: 2rem; padding: .35rem .9rem;
+        font-size: .75rem; font-weight: 600; cursor: pointer;
+        transition: background .2s, transform .1s;
+        display: inline-flex; align-items: center; gap: .25rem;
     }
-    .btn-sm:hover {
-        background: var(--primary-dark);
-    }
+    .btn-sm:hover { background: var(--primary-dark); }
+    .btn-sm:active { transform: scale(.97); }
     .btn-sm.outline {
-        background: transparent;
-        color: var(--primary);
+        background: transparent; color: var(--primary);
         border: 1px solid var(--primary);
     }
-    .btn-sm.outline:hover {
-        background: var(--primary);
-        color: white;
-    }
+    .btn-sm.outline:hover { background: var(--primary); color: #fff; }
 
-    /* ---- Modal ---- */
+    /* ============================================================
+       MODAL — PRODUCTION FIX
+       ============================================================ */
     .modal-overlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
+        inset: 0;                        /* shorthand top/right/bottom/left */
+        background: rgba(15, 23, 42, .55);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 1000;
+        padding: 1rem;
+        z-index: 99999;                  /* always on top */
         visibility: hidden;
         opacity: 0;
-        transition: all 0.2s;
+        transition: opacity .2s ease, visibility .2s ease;
+        overflow-y: auto;
     }
-    .modal-overlay.active {
-        visibility: visible;
-        opacity: 1;
-    }
+    .modal-overlay.active { visibility: visible; opacity: 1; }
+
     .modal-container {
-        background: var(--surface);
-        border-radius: var(--radius);
+        /* solid background with HARD fallback so it's never transparent */
+        background: var(--surface, #ffffff);
+        color: var(--text, #111827);
+        border-radius: var(--radius, 12px);
         max-width: 600px;
-        width: 90%;
-        max-height: 85vh;
+        width: 100%;
+        max-height: calc(100vh - 2rem);
         overflow-y: auto;
         padding: 1.5rem;
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow);
+        border: 1px solid var(--border, #e5e7eb);
+        box-shadow: var(--shadow, 0 25px 50px -12px rgba(0,0,0,.35));
+        transform: translateY(8px) scale(.98);
+        transition: transform .22s cubic-bezier(.16,1,.3,1);
     }
+    .modal-overlay.active .modal-container { transform: translateY(0) scale(1); }
+
     .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 1rem; padding-bottom: .5rem;
+        border-bottom: 1px solid var(--border, #e5e7eb);
     }
-    .modal-header h3 {
-        margin: 0;
-        font-size: 1.2rem;
-        font-weight: 600;
-    }
+    .modal-header h3 { margin: 0; font-size: 1.15rem; font-weight: 600; }
     .close-modal {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: var(--muted);
-        line-height: 1;
+        background: none; border: none;
+        font-size: 1.6rem; line-height: 1;
+        cursor: pointer; color: var(--muted, #6b7280);
+        padding: 0 .35rem; border-radius: .35rem;
+        transition: color .2s, background .2s;
     }
-    .close-modal:hover {
-        color: var(--text);
-    }
-    .form-field {
-        margin-bottom: 1rem;
-    }
+    .close-modal:hover { color: var(--text, #111827); background: var(--surface-alt, #f9fafb); }
+
+    .form-field { margin-bottom: 1rem; }
     .form-field label {
-        display: block;
-        font-weight: 600;
-        font-size: 0.85rem;
-        margin-bottom: 0.25rem;
+        display: block; font-weight: 600;
+        font-size: .82rem; margin-bottom: .35rem; color: var(--text, #111827);
     }
     .form-field input,
     .form-field select,
     .form-field textarea {
         width: 100%;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-        border: 1px solid var(--border);
-        background: var(--surface-alt);
-        color: var(--text);
-        font-size: 0.9rem;
+        padding: .55rem .7rem;
+        border-radius: .5rem;
+        border: 1px solid var(--border, #e5e7eb);
+        background: var(--surface, #ffffff);
+        color: var(--text, #111827);
+        font-size: .9rem;
+        font-family: inherit;
+        box-sizing: border-box;
+        transition: border-color .15s, box-shadow .15s;
     }
     .form-field input:focus,
     .form-field select:focus,
     .form-field textarea:focus {
         outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+        border-color: var(--primary, #3b82f6);
+        box-shadow: 0 0 0 3px rgba(59,130,246,.15);
     }
+    .form-field .hint { font-size: .72rem; color: var(--muted, #6b7280); margin-top: .25rem; }
+
     .modal-actions {
-        display: flex;
-        gap: 0.5rem;
-        justify-content: flex-end;
-        margin-top: 1rem;
+        display: flex; gap: .5rem; justify-content: flex-end;
+        margin-top: 1.25rem; padding-top: .75rem;
+        border-top: 1px solid var(--border, #e5e7eb);
     }
     .btn-primary {
-        background: var(--primary);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 2rem;
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
-        transition: 0.2s;
+        background: var(--primary, #3b82f6); color: #fff;
+        padding: .55rem 1.1rem; border-radius: 2rem;
+        border: none; font-weight: 600; font-size: .85rem;
+        cursor: pointer; transition: background .2s, transform .1s;
     }
-    .btn-primary:hover {
-        background: var(--primary-dark);
-    }
+    .btn-primary:hover { background: var(--primary-dark, #2563eb); }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
     .btn-secondary {
-        background: var(--surface-alt);
-        color: var(--text);
-        border: 1px solid var(--border);
-        padding: 0.5rem 1rem;
-        border-radius: 2rem;
-        font-weight: 600;
-        cursor: pointer;
+        background: var(--surface-alt, #f9fafb); color: var(--text, #111827);
+        border: 1px solid var(--border, #e5e7eb);
+        padding: .55rem 1.1rem; border-radius: 2rem;
+        font-weight: 600; font-size: .85rem;
+        cursor: pointer; transition: background .2s;
     }
+    .btn-secondary:hover { background: #eef2f7; }
+
+    /* Lock body scroll when modal open */
+    body.modal-open { overflow: hidden; }
 
     /* ---- Responsive ---- */
     @media (max-width: 768px) {
-        .kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        .tabs {
-            overflow-x: auto;
-            flex-wrap: nowrap;
-        }
-        .tab-btn {
-            white-space: nowrap;
-        }
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        .tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+        .tab-btn { white-space: nowrap; }
+        .page-title { font-size: 1.4rem; }
+        .modal-container { padding: 1.1rem; }
+    }
+    @media (max-width: 480px) {
+        .kpi-grid { grid-template-columns: 1fr; }
+        .header-actions { width: 100%; }
+        .header-actions .btn-sm { flex: 1; justify-content: center; }
     }
 </style>
 {% endblock %}
@@ -349,16 +285,18 @@
         <p class="page-desc">Manage academic classes, sections, subjects, and teacher assignments</p>
     </div>
     <div class="header-actions">
-        <button class="btn-sm" onclick="openModal('classModal')">+ Add Class</button>
-        <button class="btn-sm" onclick="openModal('subjectModal')">+ Add Subject</button>
-        <button class="btn-sm" onclick="openModal('assignModal')">Assign Subject</button>
+        <button type="button" class="btn-sm" data-modal-open="classModal">+ Add Class</button>
+        <button type="button" class="btn-sm" data-modal-open="subjectModal">+ Add Subject</button>
+        <button type="button" class="btn-sm outline" data-modal-open="assignModal">Assign Subject</button>
     </div>
 </div>
 
 <!-- KPI Cards -->
 <div class="kpi-grid">
     <div class="kpi-card">
-        <div class="kpi-icon blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></div>
+        <div class="kpi-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
         <div class="kpi-info">
             <div class="kpi-label">Total Classes</div>
             <div class="kpi-value">{{ total_classes }}</div>
@@ -366,7 +304,9 @@
         </div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-icon green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg></div>
+        <div class="kpi-icon green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+        </div>
         <div class="kpi-info">
             <div class="kpi-label">Total Subjects</div>
             <div class="kpi-value">{{ total_subjects }}</div>
@@ -374,7 +314,9 @@
         </div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-icon orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg></div>
+        <div class="kpi-icon orange">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+        </div>
         <div class="kpi-info">
             <div class="kpi-label">Assignments</div>
             <div class="kpi-value">{{ total_assignments }}</div>
@@ -382,7 +324,9 @@
         </div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-icon purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div class="kpi-icon purple">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
         <div class="kpi-info">
             <div class="kpi-label">Unassigned Subjects</div>
             <div class="kpi-value">{{ unassigned_subjects }}</div>
@@ -392,11 +336,11 @@
 </div>
 
 <!-- Tabs -->
-<div class="tabs">
-    <button class="tab-btn active" data-tab="classes">Classes & Sections</button>
-    <button class="tab-btn" data-tab="subjects">Subjects</button>
-    <button class="tab-btn" data-tab="assignments">Assignments</button>
-    <button class="tab-btn" data-tab="class-teacher">Class Teacher</button>
+<div class="tabs" role="tablist">
+    <button type="button" class="tab-btn active" data-tab="classes" role="tab">Classes & Sections</button>
+    <button type="button" class="tab-btn" data-tab="subjects" role="tab">Subjects</button>
+    <button type="button" class="tab-btn" data-tab="assignments" role="tab">Assignments</button>
+    <button type="button" class="tab-btn" data-tab="class-teacher" role="tab">Class Teacher</button>
 </div>
 
 <!-- Tab: Classes -->
@@ -405,7 +349,7 @@
         <div class="card-header">
             <h3>Classes</h3>
             <div class="actions">
-                <button class="btn-sm" onclick="openModal('classModal')">+ Add Class</button>
+                <button type="button" class="btn-sm" data-modal-open="classModal">+ Add Class</button>
             </div>
         </div>
         <div class="table-responsive">
@@ -416,7 +360,7 @@
                         <th>Class</th>
                         <th>Section</th>
                         <th>Description</th>
-                        <th>Subjects Assigned</th>
+                        <th>Subjects</th>
                         <th>Strength</th>
                         <th>Class Teacher</th>
                         <th>Actions</th>
@@ -425,31 +369,40 @@
                 <tbody>
                     {% for cls in classes %}
                     <tr style="background-color: {{ cls|class_row_color }};">
-                        {% if tenant.tenant_type == 'wing_school' %}<td><strong>{{ cls.wing_category|default:'Unassigned' }}</strong></td>{% endif %}
+                        {% if tenant.tenant_type == 'wing_school' %}
+                        <td><strong>{{ cls.wing_category|default:'Unassigned' }}</strong></td>
+                        {% endif %}
                         <td><strong>{{ cls.name }}</strong></td>
                         <td>{{ cls.section|default:"—" }}</td>
                         <td>{{ cls.description|default:"—" }}</td>
                         <td>{{ cls.class_subjects.all|length }}</td>
                         <td>{{ cls.student_count }}</td>
-                        <td>{% if cls.class_teacher %}<a href="{% url 'staff_profile' schema_name=tenant.schema_name staff_id=cls.class_teacher.id %}">{{ cls.class_teacher.full_name }}</a>{% else %}&mdash;{% endif %}</td>
-
+                        <td>
+                            {% if cls.class_teacher %}
+                                <a href="{% url 'staff_profile' schema_name=tenant.schema_name staff_id=cls.class_teacher.id %}">{{ cls.class_teacher.full_name }}</a>
+                            {% else %}&mdash;{% endif %}
+                        </td>
                         <td class="action-btns">
-                            <button class="action-icon" onclick="location.href='{% url 'student_list' schema_name=tenant.schema_name %}?class_id={{ cls.id }}'" title="View Students">
+                            <button type="button" class="action-icon"
+                                onclick="location.href='{% url 'student_list' schema_name=tenant.schema_name %}?class_id={{ cls.id }}'"
+                                title="View Students" aria-label="View Students">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             </button>
-                            {% if cls.class_teacher %}
-                            <button class="action-icon" onclick="location.href='{% url 'staff_profile' schema_name=tenant.schema_name staff_id=cls.class_teacher.id %}'" title="View Teacher Profile">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="7" r="3"/><path d="M5 21a7 7 0 0114 0"/></svg>
-                            </button>
-                            {% endif %}
-                            <button class="action-icon" onclick="editClass({{ cls.id }}, '{{ cls.name|escapejs }}', '{{ cls.section|escapejs }}', '{{ cls.description|escapejs }}')" title="Edit">
+                            <button type="button" class="action-icon"
+                                data-edit-class
+                                data-id="{{ cls.id }}"
+                                data-name="{{ cls.name|escapejs }}"
+                                data-section="{{ cls.section|default:''|escapejs }}"
+                                data-description="{{ cls.description|default:''|escapejs }}"
+                                title="Edit" aria-label="Edit Class">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4Z"/></svg>
                             </button>
-                            <button class="action-icon" onclick="deleteClass({{ cls.id }})" title="Delete">
+                            <button type="button" class="action-icon"
+                                data-delete-class data-id="{{ cls.id }}"
+                                title="Delete" aria-label="Delete Class">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </td>
-
                     </tr>
                     {% empty %}
                     <tr><td colspan="{% if tenant.tenant_type == 'wing_school' %}8{% else %}7{% endif %}" class="empty-row">No classes yet.</td></tr>
@@ -466,19 +419,13 @@
         <div class="card-header">
             <h3>Subjects</h3>
             <div class="actions">
-                <button class="btn-sm" onclick="openModal('subjectModal')">+ Add Subject</button>
+                <button type="button" class="btn-sm" data-modal-open="subjectModal">+ Add Subject</button>
             </div>
         </div>
         <div class="table-responsive">
             <table class="data-table">
                 <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Code</th>
-                        <th>Description</th>
-                        <th>Assigned To</th>
-                        <th>Actions</th>
-                    </tr>
+                    <tr><th>Name</th><th>Code</th><th>Description</th><th>Assigned To</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     {% for subj in subjects %}
@@ -488,10 +435,18 @@
                         <td>{{ subj.description|default:"—" }}</td>
                         <td>{{ subj.class_subjects.all|length }}</td>
                         <td class="action-btns">
-                            <button class="action-icon" onclick="editSubject({{ subj.id }}, '{{ subj.name|escapejs }}', '{{ subj.code|escapejs }}', '{{ subj.description|escapejs }}')" title="Edit">
+                            <button type="button" class="action-icon"
+                                data-edit-subject
+                                data-id="{{ subj.id }}"
+                                data-name="{{ subj.name|escapejs }}"
+                                data-code="{{ subj.code|default:''|escapejs }}"
+                                data-description="{{ subj.description|default:''|escapejs }}"
+                                title="Edit" aria-label="Edit Subject">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4Z"/></svg>
                             </button>
-                            <button class="action-icon" onclick="deleteSubject({{ subj.id }})" title="Delete">
+                            <button type="button" class="action-icon"
+                                data-delete-subject data-id="{{ subj.id }}"
+                                title="Delete" aria-label="Delete Subject">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </td>
@@ -511,19 +466,13 @@
         <div class="card-header">
             <h3>Subject Assignments</h3>
             <div class="actions">
-                <button class="btn-sm" onclick="openModal('assignModal')">+ Assign Subject</button>
+                <button type="button" class="btn-sm" data-modal-open="assignModal">+ Assign Subject</button>
             </div>
         </div>
         <div class="table-responsive">
             <table class="data-table">
                 <thead>
-                    <tr>
-                        <th>Class</th>
-                        <th>Subject</th>
-                        <th>Teacher</th>
-                        <th>Academic Year</th>
-                        <th>Actions</th>
-                    </tr>
+                    <tr><th>Class</th><th>Subject</th><th>Teacher</th><th>Academic Year</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     {% for assign in assignments %}
@@ -533,10 +482,19 @@
                         <td>{{ assign.teacher.full_name|default:"Unassigned" }}</td>
                         <td>{{ assign.academic_year|default:"—" }}</td>
                         <td class="action-btns">
-                            <button class="action-icon" onclick="editAssignment({{ assign.id }}, {{ assign.school_class.id }}, {{ assign.subject.id }}, {{ assign.teacher.id|default:'null' }}, '{{ assign.academic_year|escapejs }}')" title="Edit">
+                            <button type="button" class="action-icon"
+                                data-edit-assignment
+                                data-id="{{ assign.id }}"
+                                data-class-id="{{ assign.school_class.id }}"
+                                data-subject-id="{{ assign.subject.id }}"
+                                data-teacher-id="{{ assign.teacher.id|default:'' }}"
+                                data-year="{{ assign.academic_year|default:''|escapejs }}"
+                                title="Edit" aria-label="Edit Assignment">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4Z"/></svg>
                             </button>
-                            <button class="action-icon" onclick="deleteAssignment({{ assign.id }})" title="Delete">
+                            <button type="button" class="action-icon"
+                                data-delete-assignment data-id="{{ assign.id }}"
+                                title="Delete" aria-label="Delete Assignment">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </td>
@@ -550,43 +508,43 @@
     </div>
 </div>
 
-
 <!-- Tab: Class Teacher -->
 <div class="tab-content" id="tab-class-teacher">
     <div class="card">
         <div class="card-header">
             <h3>Class Teacher Assignments</h3>
             <div class="actions">
-                <button class="btn-sm" onclick="openModal('classTeacherModal')">+ Assign Class Teacher</button>
+                <button type="button" class="btn-sm" data-modal-open="classTeacherModal">+ Assign Class Teacher</button>
             </div>
         </div>
         <div class="table-responsive">
             <table class="data-table">
                 <thead>
-                    <tr>
-                        <th>Class</th>
-                        <th>Section</th>
-                        <th>Class Teacher</th>
-                        <th>Strength</th>
-                        <th>Actions</th>
-                    </tr>
+                    <tr><th>Class</th><th>Section</th><th>Class Teacher</th><th>Strength</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     {% for cls in classes %}
                     <tr>
                         <td><strong>{{ cls.name }}</strong></td>
                         <td>{{ cls.section|default:"—" }}</td>
-                        <td>{% if cls.class_teacher %}<a href="{% url 'staff_profile' schema_name=tenant.schema_name staff_id=cls.class_teacher.id %}">{{ cls.class_teacher.full_name }}</a>{% else %}&mdash;{% endif %}</td>
+                        <td>
+                            {% if cls.class_teacher %}
+                                <a href="{% url 'staff_profile' schema_name=tenant.schema_name staff_id=cls.class_teacher.id %}">{{ cls.class_teacher.full_name }}</a>
+                            {% else %}&mdash;{% endif %}
+                        </td>
                         <td>{{ cls.student_count }}</td>
                         <td class="action-btns">
-                            <button class="action-icon" onclick="location.href='{% url 'student_list' schema_name=tenant.schema_name %}?class_id={{ cls.id }}'" title="View Students">
+                            <button type="button" class="action-icon"
+                                onclick="location.href='{% url 'student_list' schema_name=tenant.schema_name %}?class_id={{ cls.id }}'"
+                                title="View Students" aria-label="View Students">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             </button>
-                            {% if cls.class_teacher %}
-                            <button class="action-icon" onclick="location.href='{% url 'staff_profile' schema_name=tenant.schema_name staff_id=cls.class_teacher.id %}'" title="View Teacher Profile">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="7" r="3"/><path d="M5 21a7 7 0 0114 0"/></svg>
+                            <button type="button" class="action-icon"
+                                data-assign-teacher data-class-id="{{ cls.id }}"
+                                data-class-label="{{ cls.name }}{% if cls.section %} - {{ cls.section }}{% endif %}"
+                                title="Assign Teacher" aria-label="Assign Teacher">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 4v16m8-8H4"/></svg>
                             </button>
-                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -597,70 +555,72 @@
         </div>
     </div>
 </div>
-<!-- ===== MODALS ===== -->
 
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
 
-<!-- ===== Class Teacher Assignment Modal ===== -->
-<div id="classTeacherModal" class="modal-overlay">
+<!-- Class Teacher Assignment Modal -->
+<div id="classTeacherModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="classTeacherModalTitle">
     <div class="modal-container">
         <div class="modal-header">
             <h3 id="classTeacherModalTitle">Assign Class Teacher</h3>
-            <button class="close-modal" onclick="closeModal('classTeacherModal')">&times;</button>
+            <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
         <form method="post" action="{% url 'assign_class_teacher' schema_name=tenant.schema_name %}" id="classTeacherForm">
             {% csrf_token %}
-            <input type="hidden" name="class_id" id="classTeacherClassId">
             <div class="form-field">
-                <label>Class</label>
-                <select name="class_id" id="classSelectModal" required>
+                <label for="classTeacherSelect">Class</label>
+                <select name="class_id" id="classTeacherSelect" required>
                     <option value="">Select Class</option>
                     {% for cls in classes %}
-                    <option value="{{ cls.id }}">{{ cls.name }} {% if cls.section %}- {{ cls.section }}{% endif %}</option>
+                    <option value="{{ cls.id }}">{{ cls.name }}{% if cls.section %} - {{ cls.section }}{% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-field">
-                <label>Teacher</label>
-                <select name="teacher_id" id="teacherSelectModal">
-                    <option value="">Unassign</option>
+                <label for="classTeacherTeacherSelect">Teacher</label>
+                <select name="teacher_id" id="classTeacherTeacherSelect">
+                    <option value="">— Unassign —</option>
                     {% for teacher in assign_form.fields.teacher.queryset %}
-                    <option value="{{ teacher.id }}"><b style="font-size:1.1em;">{{ teacher.first_name }}</b> {% if teacher.gender == "male" %}(son of){% elif teacher.gender == "female" %}(daughter of){% else %}(child of){% endif %} {{ teacher.last_name }}</option>
+                    <option value="{{ teacher.id }}">{{ teacher.full_name }}{% if teacher.job_title %} ({{ teacher.job_title }}){% endif %}</option>
                     {% endfor %}
                 </select>
+                <div class="hint">Khali chhodne par class teacher unassign ho jayega.</div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('classTeacherModal')">Cancel</button>
-                <button type="submit" class="btn-primary" id="classTeacherSubmitBtn">Assign Teacher</button>
+                <button type="button" class="btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn-primary">Assign Teacher</button>
             </div>
         </form>
     </div>
 </div>
 
-
 <!-- Class Modal -->
-<div id="classModal" class="modal-overlay">
+<div id="classModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="classModalTitle">
     <div class="modal-container">
         <div class="modal-header">
             <h3 id="classModalTitle">Add Class</h3>
-            <button class="close-modal" onclick="closeModal('classModal')">&times;</button>
+            <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm">
+        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm" data-add-url="{% url 'add_class' schema_name=tenant.schema_name %}">
             {% csrf_token %}
             <input type="hidden" name="class_id" id="classId">
             <div class="form-field">
-                <label>Class Name</label>
-                <input type="text" name="name" id="className" required placeholder="e.g., Grade 5">
+                <label for="className">Class Name</label>
+                <input type="text" name="name" id="className" required placeholder="e.g., Grade 5" autocomplete="off">
             </div>
             <div class="form-field">
-                <label>Section</label>
-                <input type="text" name="section" id="classSection" placeholder="e.g., A" oninput="this.value = this.value.toUpperCase()">
+                <label for="classSection">Section</label>
+                <input type="text" name="section" id="classSection" placeholder="e.g., A" autocomplete="off"
+                    oninput="this.value = this.value.toUpperCase()">
             </div>
             <div class="form-field">
-                <label>Description</label>
-                <textarea name="description" id="classDesc" rows="2"></textarea>
+                <label for="classDesc">Description</label>
+                <textarea name="description" id="classDesc" rows="2" placeholder="Optional notes"></textarea>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('classModal')">Cancel</button>
+                <button type="button" class="btn-secondary" data-modal-close>Cancel</button>
                 <button type="submit" class="btn-primary" id="classSubmitBtn">Save Class</button>
             </div>
         </form>
@@ -668,29 +628,29 @@
 </div>
 
 <!-- Subject Modal -->
-<div id="subjectModal" class="modal-overlay">
+<div id="subjectModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">
     <div class="modal-container">
         <div class="modal-header">
             <h3 id="subjectModalTitle">Add Subject</h3>
-            <button class="close-modal" onclick="closeModal('subjectModal')">&times;</button>
+            <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm">
+        <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm" data-add-url="{% url 'add_subject' schema_name=tenant.schema_name %}">
             {% csrf_token %}
             <input type="hidden" name="subject_id" id="subjectId">
             <div class="form-field">
-                <label>Subject Name</label>
-                <input type="text" name="name" id="subjectName" required placeholder="e.g., Mathematics">
+                <label for="subjectName">Subject Name</label>
+                <input type="text" name="name" id="subjectName" required placeholder="e.g., Mathematics" autocomplete="off">
             </div>
             <div class="form-field">
-                <label>Code</label>
-                <input type="text" name="code" id="subjectCode" placeholder="Auto-generated if left blank">
+                <label for="subjectCode">Code</label>
+                <input type="text" name="code" id="subjectCode" placeholder="Auto-generated if left blank" autocomplete="off">
             </div>
             <div class="form-field">
-                <label>Description</label>
-                <textarea name="description" id="subjectDesc" rows="2"></textarea>
+                <label for="subjectDesc">Description</label>
+                <textarea name="description" id="subjectDesc" rows="2" placeholder="Optional notes"></textarea>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('subjectModal')">Cancel</button>
+                <button type="button" class="btn-secondary" data-modal-close>Cancel</button>
                 <button type="submit" class="btn-primary" id="subjectSubmitBtn">Save Subject</button>
             </div>
         </form>
@@ -698,26 +658,26 @@
 </div>
 
 <!-- Assignment Modal -->
-<div id="assignModal" class="modal-overlay">
+<div id="assignModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assignModalTitle">
     <div class="modal-container">
         <div class="modal-header">
             <h3 id="assignModalTitle">Assign Subject</h3>
-            <button class="close-modal" onclick="closeModal('assignModal')">&times;</button>
+            <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm">
+        <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm" data-add-url="{% url 'assign_subject' schema_name=tenant.schema_name %}">
             {% csrf_token %}
             <input type="hidden" name="assignment_id" id="assignmentId">
             <div class="form-field">
-                <label>Class</label>
+                <label for="assignClass">Class</label>
                 <select name="school_class" id="assignClass" required>
                     <option value="">Select Class</option>
                     {% for cls in classes %}
-                    <option value="{{ cls.id }}">{{ cls.name }} {% if cls.section %}- {{ cls.section }}{% endif %}</option>
+                    <option value="{{ cls.id }}">{{ cls.name }}{% if cls.section %} - {{ cls.section }}{% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-field">
-                <label>Subject</label>
+                <label for="assignSubject">Subject</label>
                 <select name="subject" id="assignSubject" required>
                     <option value="">Select Subject</option>
                     {% for subj in subjects %}
@@ -726,140 +686,247 @@
                 </select>
             </div>
             <div class="form-field">
-                <label>Teacher</label>
+                <label for="assignTeacher">Teacher</label>
                 <select name="teacher" id="assignTeacher">
-                    <option value="">Unassigned</option>
+                    <option value="">— Unassigned —</option>
                     {% for staff in assign_form.fields.teacher.queryset %}
-                    <option value="{{ staff.id }}">{{ staff.full_name }} ({{ staff.job_title }})</option>
+                    <option value="{{ staff.id }}">{{ staff.full_name }}{% if staff.job_title %} ({{ staff.job_title }}){% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-field">
-                <label>Academic Year</label>
-                <input type="text" name="academic_year" id="assignYear" placeholder="e.g., 2024-2025">
+                <label for="assignYear">Academic Year</label>
+                <input type="text" name="academic_year" id="assignYear" placeholder="e.g., 2024-2025" autocomplete="off">
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('assignModal')">Cancel</button>
+                <button type="button" class="btn-secondary" data-modal-close>Cancel</button>
                 <button type="submit" class="btn-primary" id="assignSubmitBtn">Save Assignment</button>
             </div>
         </form>
     </div>
 </div>
 
+<!-- Hidden helper for CSRF (used by delete) -->
+<form id="csrfHelper" style="display:none">{% csrf_token %}</form>
+
 <script>
-    // ----- Tab switching -----
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+(function () {
+    'use strict';
+
+    /* ============================================================
+       CONFIG — Django URL templates
+       ============================================================ */
+    var URLS = {
+        editClass:      "{% url 'edit_class' schema_name=tenant.schema_name class_id=0 %}",
+        deleteClass:    "{% url 'delete_class' schema_name=tenant.schema_name class_id=0 %}",
+        editSubject:    "{% url 'edit_subject' schema_name=tenant.schema_name subject_id=0 %}",
+        deleteSubject:  "{% url 'delete_subject' schema_name=tenant.schema_name subject_id=0 %}",
+        editAssignment: "{% url 'edit_assignment' schema_name=tenant.schema_name assignment_id=0 %}",
+        deleteAssignment: "{% url 'delete_assignment' schema_name=tenant.schema_name assignment_id=0 %}"
+    };
+    function buildUrl(tpl, id) {
+        return tpl.replace(/0(\/?)$/, id + '$1').replace(/\/0\//, '/' + id + '/');
+    }
+
+    var csrfToken = (document.querySelector('#csrfHelper input[name="csrf_token"]') || {}).value
+                 || (document.querySelector('input[name="csrf_token"]') || {}).value;
+
+    /* ============================================================
+       TABS
+       ============================================================ */
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
             this.classList.add('active');
-            const tabId = this.dataset.tab;
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
+            var tabId = this.dataset.tab;
+            document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.remove('active'); });
+            var target = document.getElementById('tab-' + tabId);
+            if (target) target.classList.add('active');
         });
     });
 
-    // ----- Modal helpers -----
+    /* ============================================================
+       MODAL MANAGEMENT
+       ============================================================ */
+    var openStack = [];
+
     function openModal(id) {
-        document.getElementById(id).classList.add('active');
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add('active');
+        document.body.classList.add('modal-open');
+        openStack.push(id);
+
+        // Autofocus first focusable field
+        var focusable = el.querySelector('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([data-modal-close])');
+        if (focusable) setTimeout(function () { focusable.focus(); }, 60);
     }
+
     function closeModal(id) {
-        document.getElementById(id).classList.remove('active');
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('active');
+        openStack = openStack.filter(function (x) { return x !== id; });
+        if (openStack.length === 0) document.body.classList.remove('modal-open');
+        resetModal(id);
     }
-    // Close modal on overlay click
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', function(e) {
-            if (e.target === this) this.classList.remove('active');
+
+    function closeAllModals() {
+        document.querySelectorAll('.modal-overlay.active').forEach(function (m) { closeModal(m.id); });
+    }
+
+    /* ---- Reset modal forms/state ---- */
+    function resetModal(id) {
+        if (id === 'classModal') {
+            var f = document.getElementById('classForm');
+            f.reset();
+            document.getElementById('classId').value = '';
+            document.getElementById('classModalTitle').textContent = 'Add Class';
+            document.getElementById('classSubmitBtn').textContent = 'Save Class';
+            f.action = f.dataset.addUrl;
+        } else if (id === 'subjectModal') {
+            var f2 = document.getElementById('subjectForm');
+            f2.reset();
+            document.getElementById('subjectId').value = '';
+            document.getElementById('subjectModalTitle').textContent = 'Add Subject';
+            document.getElementById('subjectSubmitBtn').textContent = 'Save Subject';
+            f2.action = f2.dataset.addUrl;
+        } else if (id === 'assignModal') {
+            var f3 = document.getElementById('assignForm');
+            f3.reset();
+            document.getElementById('assignmentId').value = '';
+            document.getElementById('assignModalTitle').textContent = 'Assign Subject';
+            document.getElementById('assignSubmitBtn').textContent = 'Save Assignment';
+            f3.action = f3.dataset.addUrl;
+        } else if (id === 'classTeacherModal') {
+            var f4 = document.getElementById('classTeacherForm');
+            f4.reset();
+            document.getElementById('classTeacherModalTitle').textContent = 'Assign Class Teacher';
+        }
+    }
+
+    /* ---- Global click delegation ---- */
+    document.addEventListener('click', function (e) {
+        // Open modal button
+        var opener = e.target.closest('[data-modal-open]');
+        if (opener) { e.preventDefault(); openModal(opener.dataset.modalOpen); return; }
+
+        // Close modal button
+        var closer = e.target.closest('[data-modal-close]');
+        if (closer) { e.preventDefault(); closeModal(closer.closest('.modal-overlay').id); return; }
+
+        // Overlay click (outside container)
+        if (e.target.classList && e.target.classList.contains('modal-overlay')) {
+            closeModal(e.target.id);
+            return;
+        }
+    });
+
+    /* ---- ESC to close ---- */
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && openStack.length) {
+            closeModal(openStack[openStack.length - 1]);
+        }
+    });
+
+    /* ============================================================
+       EDIT HANDLERS (data-attribute based — safer than inline onclick)
+       ============================================================ */
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-edit-class]');
+        if (btn) {
+            var d = btn.dataset;
+            document.getElementById('classId').value = d.id;
+            document.getElementById('className').value = d.name || '';
+            document.getElementById('classSection').value = d.section || '';
+            document.getElementById('classDesc').value = d.description || '';
+            document.getElementById('classModalTitle').textContent = 'Edit Class';
+            document.getElementById('classSubmitBtn').textContent = 'Update Class';
+            document.getElementById('classForm').action = buildUrl(URLS.editClass, d.id);
+            openModal('classModal');
+            return;
+        }
+
+        var sbtn = e.target.closest('[data-edit-subject]');
+        if (sbtn) {
+            var sd = sbtn.dataset;
+            document.getElementById('subjectId').value = sd.id;
+            document.getElementById('subjectName').value = sd.name || '';
+            document.getElementById('subjectCode').value = sd.code || '';
+            document.getElementById('subjectDesc').value = sd.description || '';
+            document.getElementById('subjectModalTitle').textContent = 'Edit Subject';
+            document.getElementById('subjectSubmitBtn').textContent = 'Update Subject';
+            document.getElementById('subjectForm').action = buildUrl(URLS.editSubject, sd.id);
+            openModal('subjectModal');
+            return;
+        }
+
+        var abtn = e.target.closest('[data-edit-assignment]');
+        if (abtn) {
+            var ad = abtn.dataset;
+            document.getElementById('assignmentId').value = ad.id;
+            document.getElementById('assignClass').value = ad.classId;
+            document.getElementById('assignSubject').value = ad.subjectId;
+            document.getElementById('assignTeacher').value = ad.teacherId || '';
+            document.getElementById('assignYear').value = ad.year || '';
+            document.getElementById('assignModalTitle').textContent = 'Edit Assignment';
+            document.getElementById('assignSubmitBtn').textContent = 'Update Assignment';
+            document.getElementById('assignForm').action = buildUrl(URLS.editAssignment, ad.id);
+            openModal('assignModal');
+            return;
+        }
+
+        // "Assign Class Teacher" row button — prefill class
+        var tbtn = e.target.closest('[data-assign-teacher]');
+        if (tbtn) {
+            document.getElementById('classTeacherSelect').value = tbtn.dataset.classId;
+            document.getElementById('classTeacherModalTitle').textContent = 'Assign Class Teacher — ' + tbtn.dataset.classLabel;
+            openModal('classTeacherModal');
+            return;
+        }
+    });
+
+    /* ============================================================
+       DELETE HANDLERS — real form submission with CSRF
+       ============================================================ */
+    function submitDelete(url, confirmMsg) {
+        if (!confirm(confirmMsg)) return;
+        var f = document.createElement('form');
+        f.method = 'POST';
+        f.action = url;
+        f.style.display = 'none';
+        var inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'csrfmiddlewaretoken';
+        inp.value = csrfToken;
+        f.appendChild(inp);
+        document.body.appendChild(f);
+        f.submit();
+    }
+
+    document.addEventListener('click', function (e) {
+        var d1 = e.target.closest('[data-delete-class]');
+        if (d1) { submitDelete(buildUrl(URLS.deleteClass, d1.dataset.id), 'Deactivate this class? Assignments will remain. Continue?'); return; }
+
+        var d2 = e.target.closest('[data-delete-subject]');
+        if (d2) { submitDelete(buildUrl(URLS.deleteSubject, d2.dataset.id), 'Deactivate this subject? Assignments will remain. Continue?'); return; }
+
+        var d3 = e.target.closest('[data-delete-assignment]');
+        if (d3) { submitDelete(buildUrl(URLS.deleteAssignment, d3.dataset.id), 'Deactivate this assignment? Continue?'); return; }
+    });
+
+    /* ============================================================
+       SUBMIT PREVENTION — double click guard
+       ============================================================ */
+    ['classForm', 'subjectForm', 'assignForm', 'classTeacherForm'].forEach(function (fid) {
+        var form = document.getElementById(fid);
+        if (!form) return;
+        form.addEventListener('submit', function () {
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
         });
     });
 
-    // ----- Edit Class -----
-    function editClass(id, name, section, desc) {
-        document.getElementById('classId').value = id;
-        document.getElementById('className').value = name;
-        document.getElementById('classSection').value = section;
-        document.getElementById('classDesc').value = desc;
-        document.getElementById('classModalTitle').innerText = 'Edit Class';
-        document.getElementById('classSubmitBtn').innerText = 'Update Class';
-        document.getElementById('classForm').action = "{% url 'edit_class' schema_name=tenant.schema_name class_id=0 %}".replace('0', id);
-        openModal('classModal');
-    }
-    // Reset class modal on close
-    document.getElementById('classModal').addEventListener('hidden', function() {
-        document.getElementById('classId').value = '';
-        document.getElementById('classModalTitle').innerText = 'Add Class';
-        document.getElementById('classSubmitBtn').innerText = 'Save Class';
-        document.getElementById('classForm').action = "{% url 'add_class' schema_name=tenant.schema_name %}";
-    });
-    // ----- Delete Class -----
-    function deleteClass(id) {
-        if (confirm('Deactivate this class? Assignments will remain. Are you sure?')) {
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = "{% url 'delete_class' schema_name=tenant.schema_name class_id=0 %}".replace('0', id);
-            form.innerHTML = `{% csrf_token %}`;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    }
-
-    // ----- Edit Subject -----
-    function editSubject(id, name, code, desc) {
-        document.getElementById('subjectId').value = id;
-        document.getElementById('subjectName').value = name;
-        document.getElementById('subjectCode').value = code;
-        document.getElementById('subjectDesc').value = desc;
-        document.getElementById('subjectModalTitle').innerText = 'Edit Subject';
-        document.getElementById('subjectSubmitBtn').innerText = 'Update Subject';
-        document.getElementById('subjectForm').action = "{% url 'edit_subject' schema_name=tenant.schema_name subject_id=0 %}".replace('0', id);
-        openModal('subjectModal');
-    }
-    document.getElementById('subjectModal').addEventListener('hidden', function() {
-        document.getElementById('subjectId').value = '';
-        document.getElementById('subjectModalTitle').innerText = 'Add Subject';
-        document.getElementById('subjectSubmitBtn').innerText = 'Save Subject';
-        document.getElementById('subjectForm').action = "{% url 'add_subject' schema_name=tenant.schema_name %}";
-    });
-    // ----- Delete Subject -----
-    function deleteSubject(id) {
-        if (confirm('Deactivate this subject? Assignments will remain. Are you sure?')) {
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = "{% url 'delete_subject' schema_name=tenant.schema_name subject_id=0 %}".replace('0', id);
-            form.innerHTML = `{% csrf_token %}`;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    }
-
-    // ----- Edit Assignment -----
-    function editAssignment(id, classId, subjectId, teacherId, year) {
-        document.getElementById('assignmentId').value = id;
-        document.getElementById('assignClass').value = classId;
-        document.getElementById('assignSubject').value = subjectId;
-        if (teacherId) document.getElementById('assignTeacher').value = teacherId;
-        else document.getElementById('assignTeacher').value = '';
-        document.getElementById('assignYear').value = year;
-        document.getElementById('assignModalTitle').innerText = 'Edit Assignment';
-        document.getElementById('assignSubmitBtn').innerText = 'Update Assignment';
-        document.getElementById('assignForm').action = "{% url 'edit_assignment' schema_name=tenant.schema_name assignment_id=0 %}".replace('0', id);
-        openModal('assignModal');
-    }
-    document.getElementById('assignModal').addEventListener('hidden', function() {
-        document.getElementById('assignmentId').value = '';
-        document.getElementById('assignModalTitle').innerText = 'Assign Subject';
-        document.getElementById('assignSubmitBtn').innerText = 'Save Assignment';
-        document.getElementById('assignForm').action = "{% url 'assign_subject' schema_name=tenant.schema_name %}";
-    });
-    // ----- Delete Assignment -----
-    function deleteAssignment(id) {
-        if (confirm('Deactivate this assignment? Are you sure?')) {
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = "{% url 'delete_assignment' schema_name=tenant.schema_name assignment_id=0 %}".replace('0', id);
-            form.innerHTML = `{% csrf_token %}`;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    }
+})();
 </script>
 {% endblock %}
