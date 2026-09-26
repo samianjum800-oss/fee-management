@@ -78,12 +78,17 @@
     .overlay {
         position:fixed; inset:0; background:rgba(15,23,42,0.65);
         z-index:99999; display:none; align-items:flex-start; justify-content:center;
-        backdrop-filter:blur(6px); padding:2rem 1rem; overflow-y:auto;
+        backdrop-filter:blur(6px); padding:2rem 0.5rem; overflow-y:auto;
     }
     .overlay.active { display:flex; }
     .overlay-content {
         background:var(--surface,#fff); border-radius:1rem;
-        padding:1.5rem 1.75rem; max-width:1100px; width:100%;
+        padding:1.5rem 1.75rem; width:100%;
+        /* ASSIGN_GRID_RESPONSIVE_WIDTH_V1: grow the modal up to the
+           viewport edge so wide grids (10+ periods) render without
+           a horizontal scrollbar. When the grid still can't fit,
+           the outer `overflow-x: auto` wrapper produces a scroll. */
+        max-width: calc(100vw - 1rem);
         box-shadow:0 25px 70px rgba(0,0,0,0.45);
         border:1px solid var(--border);
         animation: modalIn 0.18s ease;
@@ -129,7 +134,7 @@
         vertical-align:middle;
     }
     .assign-grid .period-col {
-        min-width:110px;
+        min-width:96px;
     }
     .assign-grid select {
         width:100%; padding:0.35rem;
@@ -182,6 +187,15 @@
         overflow: hidden;
         background: var(--surface);
         font-size: 0.85rem;
+        /* ASSIGN_GRID_HORIZONTAL_OVERFLOW_FIX_V1: a flex-column
+           container defaults to `width: auto`, which stretches it
+           to the parent's width. That clamped the grid inside the
+           modal and clipped any period beyond the modal's
+           available width (period 9/10 looked "half cut"). Force
+           the container to be at least as wide as its widest
+           row's natural content; the outer `overflow-x: auto`
+           wrapper then produces a horizontal scrollbar. */
+        min-width: max-content;
     }
     .assign-grid-rows .assign-row {
         display: flex;
@@ -194,7 +208,7 @@
         padding: 0.4rem;
         text-align: center;
         border-right: 1px solid var(--border);
-        min-width: 110px;
+        min-width: 96px;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
@@ -310,9 +324,9 @@
                 <tr>
                     <td><strong>{{ row.class_display_name }}</strong></td>
                     <td>
-                        <span class="tag tag-blue">{{ row.timetable_title }}</span>
+                        <span class="tag tag-blue">{{ row.display_label }}</span>
                         {% if row.timetable_label %}
-                        <span class="text-muted" style="font-size:0.8rem;"> · {{ row.timetable_label }}</span>
+                        <span class="text-muted" style="font-size:0.8rem;"> · </span>
                         {% endif %}
                     </td>
                     <td>
@@ -1020,7 +1034,15 @@ window.TT_URLS = {
             label:          tt.label || '',
             break_duration: duration,
             days:           days,
-            edit_id:        tt.id
+            edit_id:        tt.id,
+            // ASSIGN_TEACHERS_MULTI_TIMETABLE_EDIT_V1: pass the class
+            // id so the server can exclude every timetable currently
+            // assigned to THIS class from the "same label overlap"
+            // guard. Without it, saving the merged grid (Mon-Thu + Fri
+            // shown together) collided with the class's own sibling
+            // timetable and raised the false "seniors friday
+            // timetable (friday 8:00-12:00)" error.
+            class_id:       CURRENT_CLASS_ID
         };
 
         var saveBtnEl = document.getElementById('editTtSaveBtn');

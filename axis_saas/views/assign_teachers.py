@@ -176,23 +176,58 @@ def timetable_assign_teachers(request, schema_name):
             .values_list('school_class_id', 'n')
         )
 
-        class_rows = []
+        _grouped = {}
         for a in class_assignments:
             cls = a.school_class
-            display = get_class_display_name(cls, tenant.tenant_type)
-            total_periods = 0
-            for d in (a.timetable.days or []):
-                try:
-                    total_periods += int(d.get('periods_count') or 0)
-                except (TypeError, ValueError):
-                    pass
+            g = _grouped.get(cls.id)
+            if g is None:
+                g = {
+                    'class_id': cls.id,
+                    'class_display_name': get_class_display_name(cls, tenant.tenant_type),
+                    'timetables': [],
+                    'labels': [],
+                }
+                _grouped[cls.id] = g
+            g['timetables'].append(a.timetable)
+            if a.timetable is not None and a.timetable.label_id:
+                _lbl = a.timetable.label.name
+                if _lbl not in g['labels']:
+                    g['labels'].append(_lbl)
+
+        class_rows = []
+        for g in _grouped.values():
+            # ASSIGN_PERIODS_COUNT_MERGE_FIX_V1: sum DISTINCT
+            # (day_of_week, period_order) pairs across every timetable
+            # assigned to this class. The grid the Manage button opens
+            # uses the same union view (see api_get_teacher_assignments
+            # — _merged_days_by_dow), so this count now matches it.
+            _merged_orders = {}
+            for _tt in g['timetables']:
+                if _tt is None:
+                    continue
+                for _d in (_tt.days or []):
+                    _dow = _d.get('day_of_week')
+                    if _dow is None:
+                        continue
+                    _bucket = _merged_orders.setdefault(_dow, set())
+                    for _p in (_d.get('periods') or []):
+                        if _p.get('is_break'):
+                            continue
+                        _order = _p.get('order')
+                        if _order is not None:
+                            _bucket.add(_order)
+            total_periods = sum(len(_s) for _s in _merged_orders.values())
+            _label_display = ', '.join(g['labels']) or 'Timetable'
             class_rows.append({
-                'class_id': cls.id,
-                'class_display_name': display,
-                'timetable_title': a.timetable.title,
-                'timetable_label': a.timetable.label.name if a.timetable.label_id else '',
+                'class_id': g['class_id'],
+                'class_display_name': g['class_display_name'],
+                'display_label': _label_display,
+                'labels': list(g['labels']),
+                'timetable_title': _label_display,
+                'timetable_label': '',
+                'timetable_count': len(g['timetables']),
                 'total_periods': total_periods,
-                'assigned_count': _counts.get(cls.id, 0),
+                'assigned_count': _counts.get(g['class_id'], 0),
             })
 
         assigned_class_ids = {a.school_class_id for a in class_assignments}
@@ -232,23 +267,73 @@ def api_get_teacher_assignments(request, schema_name, class_id):
 
     with schema_context(schema_name):
         school_class = get_object_or_404(SchoolClass, id=class_id, is_active=True)
-        assignment = (
+        all_assignments = list(
             ClassTimetableAssignment.objects
-            .select_related('timetable')
+            .select_related('timetable__label')
             .filter(school_class=school_class)
-            .first()
+            .order_by('assigned_at', 'id')
         )
 
         class_display = get_class_display_name(school_class, tenant.tenant_type)
 
-        if not assignment or not assignment.timetable:
+        if not all_assignments or all_assignments[0].timetable is None:
             return JsonResponse({
                 'has_timetable': False,
                 'class_id': school_class.id,
                 'class_display': class_display,
             })
 
-        tt = assignment.timetable
+        tt = all_assignments[0].timetable
+
+        _merged_days_by_dow = {}
+        _merged_labels = []
+        _merged_break_duration = 0
+        for _a in all_assignments:
+            _t = _a.timetable
+            if _t is None:
+                continue
+            if _t.label_id:
+                _lbl_name = _t.label.name
+                if _lbl_name not in _merged_labels:
+                    _merged_labels.append(_lbl_name)
+            try:
+                _bd = int(_t.break_duration or 0)
+            except (TypeError, ValueError):
+                _bd = 0
+            if _bd > _merged_break_duration:
+                _merged_break_duration = _bd
+            for _day in (_t.days or []):
+                _dow = _day.get('day_of_week')
+                if _dow is None:
+                    continue
+                if _dow not in _merged_days_by_dow:
+                    _merged_days_by_dow[_dow] = {
+                        'day_of_week': _dow,
+                        'day_label': _day.get('day_label'),
+                        'start': _day.get('start'),
+                        'end': _day.get('end'),
+                        'periods_count': 0,
+                        'break_after': _day.get('break_after'),
+                        'break_duration': _day.get('break_duration') or 0,
+                        'periods': [],
+                    }
+                _target = _merged_days_by_dow[_dow]
+                _existing_orders = {
+                    _p.get('order') for _p in _target['periods']
+                    if not _p.get('is_break')
+                }
+                for _p in (_day.get('periods') or []):
+                    if _p.get('is_break'):
+                        _target['periods'].append(_p)
+                    elif _p.get('order') not in _existing_orders:
+                        _target['periods'].append(_p)
+                        _target['periods_count'] += 1
+                        _existing_orders.add(_p.get('order'))
+        _merged_days = [
+            _merged_days_by_dow[k]
+            for k in sorted(_merged_days_by_dow.keys())
+        ]
+        _merged_label_display = ', '.join(_merged_labels)
 
         subjects = []
         for cs in (
@@ -363,14 +448,14 @@ def api_get_teacher_assignments(request, schema_name, class_id):
             'class_id': school_class.id,
             'class_display': class_display,
             'timetable_id': tt.id,
-            'timetable_title': tt.title,
-            'timetable_label': tt.label.name if tt.label_id else '',
-            'timetable_days': tt.days or [],
-            'timetable_break_duration': tt.break_duration or 0,
+            'timetable_title': _merged_label_display or tt.title,
+            'timetable_label': _merged_label_display,
+            'timetable_days': _merged_days,
+            'timetable_break_duration': _merged_break_duration,
             'timetable_updated_at': (
                 tt.updated_at.isoformat() if tt.updated_at else ''
             ),
-            'break_duration': tt.break_duration or 0,
+            'break_duration': _merged_break_duration,
             'subjects': subjects,
             'existing': existing,
             'teacher_busy': teacher_busy,
@@ -428,20 +513,20 @@ def api_save_teacher_assignments(request, schema_name, class_id):
                     status=404,
                 )
 
-            assignment = (
+            all_assignments = list(
                 ClassTimetableAssignment.objects
-                .select_related('timetable')
+                .select_related('timetable__label')
                 .filter(school_class=school_class)
-                .first()
+                .order_by('assigned_at', 'id')
             )
-            if assignment is None or assignment.timetable is None:
+            if not all_assignments or all_assignments[0].timetable is None:
                 return JsonResponse(
                     {'success': False,
                      'error': 'Class has no assigned timetable.'},
                     status=400,
                 )
 
-            tt = assignment.timetable
+            tt = all_assignments[0].timetable
 
             # ---- Empty-payload guard --------------------------------
             # V4_1: moved ABOVE the optimistic-lock check. When the
@@ -466,28 +551,47 @@ def api_save_teacher_assignments(request, schema_name, class_id):
                 }, status=400)
 
             # ---- Optimistic lock pre-check --------------------------
-            # ASSIGN_TEACHERS_HARDENING_V3: when rows exist for this
-            # class but the client omitted the version token, refuse
-            # rather than silently overwrite. This is stricter than V2
-            # (which treated missing tokens as "no version info").
+            # ASSIGN_TEACHERS_MULTI_TIMETABLE_LOCK_V2: the client's
+            # token comes from whichever timetable the GET endpoint
+            # returned. With a multi-timetable class the GET and POST
+            # endpoints can legitimately resolve DIFFERENT rows for
+            # the "current version", and the JSON round-trip in GET
+            # can drop microsecond precision. We therefore accept the
+            # token if it matches (up to seconds) the updated_at of
+            # ANY timetable currently assigned to this class.
             _has_existing_rows = PeriodTeacherAssignment.objects.filter(
                 school_class=school_class,
             ).exists()
-            if client_tt_updated_at and tt.updated_at:
-                if client_tt_updated_at != tt.updated_at.isoformat():
-                    return JsonResponse({
-                        'success': False,
-                        'error': (
-                            'The timetable was modified by another session '
-                            'since this page was loaded. Reload and retry.'
-                        ),
-                    }, status=409)
-            elif _has_existing_rows and not client_tt_updated_at:
-                # BUG-7 fix: previously this only logged and let the
-                # client through. A raw API call that simply omits
-                # the token could silently overwrite existing rows.
-                # Refuse instead — the client is expected to
-                # round-trip timetable_updated_at.
+
+            _has_client_token = bool(client_tt_updated_at)
+
+            if _has_client_token and all_assignments:
+                _valid_tokens = set()
+                for _a in all_assignments:
+                    _t = _a.timetable
+                    if _t is not None and _t.updated_at:
+                        _valid_tokens.add(_t.updated_at.isoformat())
+
+                if _valid_tokens:
+                    _c = client_tt_updated_at.strip()
+                    _c_sec = _c[:19]
+                    _match = any(_v[:19] == _c_sec for _v in _valid_tokens)
+                    if not _match:
+                        logger.warning(
+                            'ASSIGN_TEACHERS_MULTI_TIMETABLE_LOCK_V2: '
+                            'optimistic-lock mismatch for class=%s. '
+                            'client=%r valid=%r',
+                            class_id, _c, sorted(_valid_tokens),
+                        )
+                        return JsonResponse({
+                            'success': False,
+                            'error': (
+                                'The timetable was modified by another '
+                                'session since this page was loaded. '
+                                'Reload and retry.'
+                            ),
+                        }, status=409)
+            elif _has_existing_rows and not _has_client_token:
                 return JsonResponse({
                     'success': False,
                     'error': (
@@ -497,7 +601,17 @@ def api_save_teacher_assignments(request, schema_name, class_id):
                     ),
                 }, status=409)
 
-            valid_periods = _class_timetable_periods(tt)
+            # ASSIGN_TEACHERS_MULTI_TIMETABLE_EDIT_V2: merge valid
+            # periods across EVERY timetable assigned to this class.
+            # A class can legitimately hold several timetables under
+            # the same label (e.g. a Mon-Thu block + a Fri block). The
+            # assign-teachers grid shows their union, so validation
+            # must accept any (day, period) that exists in at least
+            # one of them.
+            valid_periods = set()
+            for _a in all_assignments:
+                if _a.timetable is not None:
+                    valid_periods |= _class_timetable_periods(_a.timetable)
 
             class_subject_teacher = {
                 cs.subject_id: cs.teacher_id
@@ -570,9 +684,10 @@ def api_save_teacher_assignments(request, schema_name, class_id):
                     .filter(school_class_id__in=_ob_class_ids)
                     .select_related('timetable')
                 ):
-                    _ob_valid[_cta.school_class_id] = (
-                        _class_timetable_periods(_cta.timetable)
+                    _bucket = _ob_valid.setdefault(
+                        _cta.school_class_id, set(),
                     )
+                    _bucket |= _class_timetable_periods(_cta.timetable)
             for _pta in _other_pta_rows:
                 _valid = _ob_valid.get(_pta.school_class_id)
                 if _valid is None or (

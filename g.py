@@ -1,1308 +1,146 @@
 #!/usr/bin/env python3
-"""
-AXIS Patcher — Teachers & Academic Management page refactor.
-
-TEACHERS_MANAGEMENT_V1
-----------------------
-  * /portal/<schema>/classes/  ->  redirect to /portal/<schema>/teachers/
-  * /portal/<schema>/teachers/               (subjects tab, default)
-  * /portal/<schema>/teachers/subjects/      (subjects tab)
-  * /portal/<schema>/teachers/assignments/   (assignments tab)
-  * /portal/<schema>/teachers/class-teachers/(class teachers tab)
-  * Removes the "Classes & Sections" tab
-  * Rebuilds frontend from scratch (professional UI/UX)
-  * Uses get_class_display_name() so wing vs single school renders correctly
-  * Drops the "+ Add Class" header button
-  * Adds teacher-focused quick actions
-  * Ships backend + frontend tests
-"""
 import argparse
 import ast
-import os
-import re
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
-TS = lambda: datetime.now().strftime('%H:%M:%S')
+
+def ts():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
 def log(msg, level='INFO'):
-    print(f'[{TS()}] [{level}] {msg}')
+    print(f'[{ts()}] [{level}] {msg}')
 
 
-# ---------------------------------------------------------------------------
-# New view module
-# ---------------------------------------------------------------------------
-NEW_VIEW_FILE = 'axis_saas/views/teachers_management.py'
-NEW_VIEW_CONTENT = '''"""AXIS views — Teachers & Academic Management (TEACHERS_MANAGEMENT_V1).
+def read(path):
+    return path.read_text(encoding='utf-8')
 
-Split out from the legacy `class_management` view. This view powers the
-`/portal/<schema>/teachers/` page which now only handles:
 
-    * Subjects catalog (CRUD)
-    * Subject-to-class assignments
-    * Class-teacher assignments
-
-Each tab has its own URL:
-    /portal/<schema>/teachers/                  -> Subjects (default)
-    /portal/<schema>/teachers/subjects/         -> Subjects
-    /portal/<schema>/teachers/assignments/      -> Assignments
-    /portal/<schema>/teachers/class-teachers/   -> Class Teachers
-"""
-import logging
-
-from django.shortcuts import redirect, render
-from django.db.models import Count
-from django_tenants.utils import schema_context
-
-from ..forms import ClassSubjectForm, SubjectForm, available_wing_categories
-from ..models import ClassSubject, SchoolClass, Staff, Student, Subject
-from .helpers import (
-    get_tenant, is_mobile_user_agent,
-    require_school_feature, require_tenant_type,
-)
-from axis_saas.utils.class_display import get_class_display_name
-
-logger = logging.getLogger(__name__)
-
-VALID_TABS = ('subjects', 'assignments', 'class-teachers')
-
-
-def _build_context(schema_name, tenant, active_tab):
-    with schema_context(schema_name):
-        classes = list(
-            SchoolClass.objects
-            .filter(is_active=True)
-            .select_related(
-                'class_teacher',
-                'wing_category',
-                'wing_category__parent',
-            )
-            .order_by('name', 'section')
-        )
-        for cls in classes:
-            cls.display_name = get_class_display_name(cls, tenant.tenant_type)
-            cls.student_count = Student.objects.filter(school_class=cls).count()
-
-        subjects = list(
-            Subject.objects.filter(is_active=True).order_by('name')
-        )
-
-        assignments = list(
-            ClassSubject.objects
-            .filter(is_active=True)
-            .select_related(
-                'school_class',
-                'school_class__wing_category',
-                'school_class__wing_category__parent',
-                'subject',
-                'teacher',
-            )
-            .order_by('school_class__name', 'subject__name')
-        )
-        for a in assignments:
-            a.class_display_name = get_class_display_name(
-                a.school_class, tenant.tenant_type,
-            )
-
-        teachers = list(
-            Staff.objects.filter(status='active').order_by('full_name')
-        )
-
-        subject_form = SubjectForm()
-        assign_form = ClassSubjectForm()
-        assign_form.fields['teacher'].queryset = (
-            Staff.objects.filter(status='active')
-        )
-
-        unassigned_subjects = (
-            Subject.objects.filter(is_active=True)
-            .exclude(
-                id__in=ClassSubject.objects
-                .filter(is_active=True)
-                .values('subject_id')
-            )
-            .count()
-        )
-
-        classes_with_ct = sum(1 for c in classes if c.class_teacher_id)
-        classes_without_ct = len(classes) - classes_with_ct
-        subjects_with_teacher = sum(1 for a in assignments if a.teacher_id)
-
-        top_subjects = list(
-            ClassSubject.objects
-            .filter(is_active=True)
-            .values('subject__name')
-            .annotate(count=Count('id'))
-            .order_by('-count')[:5]
-        )
-
-        wing_categories = (
-            available_wing_categories()
-            if tenant.tenant_type == 'wing_school' else []
-        )
-
-    return {
-        'tenant': tenant,
-        'active_tab': active_tab,
-        'classes': classes,
-        'subjects': subjects,
-        'assignments': assignments,
-        'teachers': teachers,
-        'subject_form': subject_form,
-        'assign_form': assign_form,
-        'wing_categories': wing_categories,
-        'top_subjects': top_subjects,
-        'analytics': {
-            'total_classes': len(classes),
-            'total_subjects': len(subjects),
-            'total_assignments': len(assignments),
-            'classes_with_ct': classes_with_ct,
-            'classes_without_ct': classes_without_ct,
-            'unassigned_subjects': unassigned_subjects,
-            'subjects_with_teacher': subjects_with_teacher,
-            'total_teachers': len(teachers),
-        },
-        'logo_url': tenant.school_logo.url if tenant.school_logo else None,
-    }
-
-
-@require_tenant_type(['school'])
-@require_school_feature('class_management')
-def teachers_management_view(request, schema_name, active_tab='subjects'):
-    if is_mobile_user_agent(request):
-        return redirect('mobile_class_management', schema_name=schema_name)
-    if active_tab not in VALID_TABS:
-        active_tab = 'subjects'
-    tenant = get_tenant(request, schema_name)
-    context = _build_context(schema_name, tenant, active_tab)
-    response = render(request, 'tenant/teachers_management.html', context)
-    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response['Pragma'] = 'no-cache'
-    response['Expires'] = '0'
-    return response
-
-
-def teachers_management_redirect(request, schema_name):
-    """Legacy /classes/ URL -> /teachers/."""
-    return redirect('teachers_management', schema_name=schema_name)
-'''
-
-
-# ---------------------------------------------------------------------------
-# New template
-# ---------------------------------------------------------------------------
-NEW_TEMPLATE_FILE = 'templates/tenant/teachers_management.html'
-NEW_TEMPLATE_CONTENT = r'''{% extends 'tenant/base.html' %}
-{% load fee_extras %}
-{% load class_display %}
-{% load static %}
-{% block title %}Teachers & Academic Management | {{ tenant.name }}{% endblock %}
-
-{% block extra_head %}
-<style>
-.tm-page {
-    --tm-primary: var(--primary, #4f46e5);
-    --tm-primary-dark: var(--primary-dark, #4338ca);
-    --tm-primary-soft: rgba(79, 70, 229, 0.10);
-    --tm-success: #10b981;
-    --tm-success-soft: rgba(16, 185, 129, 0.12);
-    --tm-warn: #f59e0b;
-    --tm-warn-soft: rgba(245, 158, 11, 0.14);
-    --tm-danger: #ef4444;
-    --tm-danger-soft: rgba(239, 68, 68, 0.12);
-    --tm-info: #0ea5e9;
-    --tm-info-soft: rgba(14, 165, 233, 0.12);
-    --tm-purple: #8b5cf6;
-    --tm-purple-soft: rgba(139, 92, 246, 0.12);
-    --tm-radius: 14px;
-    --tm-radius-sm: 10px;
-    --tm-border: var(--border);
-    --tm-surface: var(--surface);
-    --tm-surface-2: var(--surface-alt);
-    --tm-muted: var(--muted);
-    color: var(--text);
-}
-
-/* Header */
-.tm-header {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
-    padding-bottom: 1.25rem; border-bottom: 1px solid var(--tm-border);
-}
-.tm-title {
-    font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em;
-    margin: 0 0 0.25rem; color: var(--text);
-}
-.tm-subtitle { font-size: 0.88rem; color: var(--tm-muted); margin: 0; }
-.tm-header-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-
-/* Buttons */
-.tm-btn {
-    display: inline-flex; align-items: center; gap: 0.45rem;
-    padding: 0.6rem 1.1rem; border-radius: 999px;
-    font-size: 0.82rem; font-weight: 600;
-    border: 1px solid transparent; cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
-    text-decoration: none; white-space: nowrap; font-family: inherit;
-}
-.tm-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
-.tm-btn-primary {
-    background: linear-gradient(135deg, #6366f1, var(--tm-primary-dark));
-    color: #fff;
-    box-shadow: 0 8px 20px -10px rgba(79, 70, 229, 0.8);
-}
-.tm-btn-primary:hover { transform: translateY(-1px); }
-.tm-btn-ghost {
-    background: var(--tm-surface); color: var(--text);
-    border-color: var(--tm-border);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-}
-.tm-btn-ghost:hover {
-    border-color: var(--tm-primary); color: var(--tm-primary);
-    transform: translateY(-1px);
-}
-.tm-btn-sm { padding: 0.4rem 0.85rem; font-size: 0.76rem; }
-
-/* KPIs */
-.tm-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.9rem; margin-bottom: 1.5rem;
-}
-.tm-kpi {
-    background: var(--tm-surface); border: 1px solid var(--tm-border);
-    border-radius: var(--tm-radius); padding: 1rem 1.1rem;
-    display: flex; align-items: center; gap: 0.85rem;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    transition: transform 0.18s, box-shadow 0.2s, border-color 0.2s;
-}
-.tm-kpi:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px -14px rgba(15, 23, 42, 0.24);
-    border-color: var(--tm-primary);
-}
-.tm-kpi-icon {
-    width: 42px; height: 42px; border-radius: 12px;
-    display: grid; place-items: center; flex-shrink: 0;
-}
-.tm-kpi-icon svg { width: 20px; height: 20px; }
-.tm-kpi-icon.primary { background: var(--tm-primary-soft); color: var(--tm-primary); }
-.tm-kpi-icon.success { background: var(--tm-success-soft); color: var(--tm-success); }
-.tm-kpi-icon.warn { background: var(--tm-warn-soft); color: var(--tm-warn); }
-.tm-kpi-icon.danger { background: var(--tm-danger-soft); color: var(--tm-danger); }
-.tm-kpi-icon.info { background: var(--tm-info-soft); color: var(--tm-info); }
-.tm-kpi-icon.purple { background: var(--tm-purple-soft); color: var(--tm-purple); }
-.tm-kpi-body { display: flex; flex-direction: column; min-width: 0; }
-.tm-kpi-label {
-    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em;
-    font-weight: 700; color: var(--tm-muted); margin: 0;
-}
-.tm-kpi-value {
-    font-size: 1.5rem; font-weight: 800; color: var(--text);
-    letter-spacing: -0.02em; line-height: 1.1; margin-top: 0.1rem;
-}
-.tm-kpi-sub { font-size: 0.7rem; color: var(--tm-muted); margin-top: 0.15rem; }
-
-/* Action bar */
-.tm-actions-bar {
-    display: flex; flex-wrap: wrap; gap: 0.5rem;
-    margin-bottom: 1.5rem;
-}
-
-/* Tabs */
-.tm-tabs {
-    display: flex; gap: 0.3rem; flex-wrap: wrap;
-    border-bottom: 1px solid var(--tm-border);
-    margin-bottom: 1.25rem; padding: 0 0.25rem;
-}
-.tm-tab {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.65rem 1.15rem; border-radius: 10px 10px 0 0;
-    font-size: 0.85rem; font-weight: 600;
-    text-decoration: none; color: var(--tm-muted);
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s, background 0.15s, border-color 0.15s;
-    margin-bottom: -1px;
-}
-.tm-tab:hover { color: var(--text); background: var(--tm-surface-2); }
-.tm-tab.active {
-    color: var(--tm-primary);
-    border-bottom-color: var(--tm-primary);
-    background: var(--tm-surface);
-}
-.tm-tab-badge {
-    display: inline-block; padding: 0.1rem 0.5rem;
-    border-radius: 999px; font-size: 0.68rem; font-weight: 700;
-    background: var(--tm-surface-2); color: var(--tm-muted);
-}
-.tm-tab.active .tm-tab-badge {
-    background: var(--tm-primary-soft); color: var(--tm-primary);
-}
-
-/* Card + table */
-.tm-card {
-    background: var(--tm-surface); border: 1px solid var(--tm-border);
-    border-radius: var(--tm-radius); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    overflow: hidden;
-}
-.tm-card-head {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0.85rem 1.15rem; gap: 0.75rem;
-    border-bottom: 1px solid var(--tm-border);
-    background: var(--tm-surface-2);
-}
-.tm-card-head h3 {
-    margin: 0; font-size: 0.95rem; font-weight: 700;
-    display: flex; align-items: center; gap: 0.5rem;
-}
-.tm-table-wrap { overflow-x: auto; }
-.tm-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-.tm-table thead th {
-    padding: 0.7rem 1rem; text-align: left;
-    font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
-    letter-spacing: 0.06em; color: var(--tm-muted);
-    background: var(--tm-surface-2);
-    border-bottom: 1px solid var(--tm-border);
-    white-space: nowrap;
-}
-.tm-table tbody td {
-    padding: 0.75rem 1rem; border-bottom: 1px solid var(--tm-border);
-    color: var(--text); vertical-align: middle;
-}
-.tm-table tbody tr:last-child td { border-bottom: none; }
-.tm-table tbody tr:hover { background: var(--tm-surface-2); }
-.tm-muted { color: var(--tm-muted); }
-
-.tm-chip {
-    display: inline-flex; align-items: center; gap: 0.3rem;
-    padding: 0.15rem 0.6rem; border-radius: 999px;
-    font-size: 0.7rem; font-weight: 700;
-    background: var(--tm-surface-2); color: var(--tm-muted);
-    border: 1px solid var(--tm-border);
-}
-.tm-chip.success { background: var(--tm-success-soft); color: #047857; border-color: transparent; }
-.tm-chip.warn { background: var(--tm-warn-soft); color: #b45309; border-color: transparent; }
-.tm-chip.danger { background: var(--tm-danger-soft); color: #b91c1c; border-color: transparent; }
-.tm-chip.primary { background: var(--tm-primary-soft); color: var(--tm-primary); border-color: transparent; }
-
-.tm-icon-btn {
-    width: 32px; height: 32px; border-radius: 9px;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: var(--tm-surface-2); border: 1px solid var(--tm-border);
-    color: var(--text); cursor: pointer; transition: all 0.18s;
-}
-.tm-icon-btn:hover {
-    background: var(--tm-primary); border-color: var(--tm-primary);
-    color: #fff; transform: translateY(-1px);
-}
-.tm-icon-btn svg { width: 15px; height: 15px; }
-.tm-row-actions { display: flex; gap: 0.35rem; justify-content: flex-end; }
-
-.tm-empty {
-    padding: 2.5rem 1rem; text-align: center; color: var(--tm-muted);
-}
-.tm-empty svg { width: 48px; height: 48px; opacity: 0.35; margin-bottom: 0.65rem; }
-.tm-empty h4 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 0 0 0.35rem; }
-.tm-empty p { font-size: 0.82rem; margin: 0; }
-
-/* Modal */
-.tm-modal-backdrop {
-    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
-    backdrop-filter: blur(4px); display: none;
-    align-items: center; justify-content: center;
-    z-index: 5000; padding: 1rem;
-}
-.tm-modal-backdrop.open { display: flex; }
-.tm-modal {
-    background: var(--tm-surface); border-radius: 16px;
-    max-width: 520px; width: 100%; max-height: 90vh;
-    overflow-y: auto; padding: 1.5rem;
-    border: 1px solid var(--tm-border);
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
-    animation: tmModalIn 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-@keyframes tmModalIn {
-    from { transform: translateY(8px) scale(0.98); opacity: 0; }
-    to { transform: translateY(0) scale(1); opacity: 1; }
-}
-.tm-modal-head {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 1rem; padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--tm-border);
-}
-.tm-modal-head h3 { margin: 0; font-size: 1.05rem; font-weight: 700; }
-.tm-modal-close {
-    background: none; border: none; cursor: pointer;
-    color: var(--tm-muted); font-size: 1.5rem; line-height: 1;
-    padding: 0 0.25rem; transition: color 0.15s, transform 0.15s;
-}
-.tm-modal-close:hover { color: var(--text); transform: rotate(90deg); }
-
-.tm-field { margin-bottom: 1rem; }
-.tm-field label {
-    display: block; font-size: 0.78rem; font-weight: 700;
-    margin-bottom: 0.35rem; color: var(--text);
-}
-.tm-field input, .tm-field select, .tm-field textarea {
-    width: 100%; padding: 0.6rem 0.8rem; border-radius: 10px;
-    border: 1px solid var(--tm-border); background: var(--tm-surface-2);
-    color: var(--text); font-size: 0.88rem; font-family: inherit;
-    box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s;
-}
-.tm-field input:focus, .tm-field select:focus, .tm-field textarea:focus {
-    outline: none; border-color: var(--tm-primary);
-    box-shadow: 0 0 0 3px var(--tm-primary-soft);
-}
-.tm-modal-actions {
-    display: flex; justify-content: flex-end; gap: 0.5rem;
-    margin-top: 1.25rem; padding-top: 1rem;
-    border-top: 1px solid var(--tm-border);
-}
-
-@media (max-width: 768px) {
-    .tm-header { align-items: flex-start; }
-    .tm-header-actions { width: 100%; }
-    .tm-header-actions .tm-btn { flex: 1; justify-content: center; }
-    .tm-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-    .tm-kpi-value { font-size: 1.25rem; }
-    .tm-tabs { overflow-x: auto; flex-wrap: nowrap; }
-    .tm-tab { white-space: nowrap; }
-}
-</style>
-{% endblock %}
-
-{% block body %}
-<div class="tm-page">
-
-  <header class="tm-header">
-    <div>
-      <h1 class="tm-title">Teachers &amp; Academic Management</h1>
-      <p class="tm-subtitle">Manage subjects, assignments, and class teachers in one place</p>
-    </div>
-    <div class="tm-header-actions">
-      <a href="{% url 'timetable_assign_teachers' schema_name=tenant.schema_name %}" class="tm-btn tm-btn-ghost">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Assign Periods to Teachers
-      </a>
-      <a href="{% url 'timetable_assignments' schema_name=tenant.schema_name %}" class="tm-btn tm-btn-ghost">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Assign Timetable to Classes
-      </a>
-      <a href="{% url 'staff_list' schema_name=tenant.schema_name %}" class="tm-btn tm-btn-ghost">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        Staff Directory
-      </a>
-    </div>
-  </header>
-
-  <section class="tm-kpi-grid">
-    <div class="tm-kpi">
-      <div class="tm-kpi-icon primary">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
-      </div>
-      <div class="tm-kpi-body">
-        <span class="tm-kpi-label">Classes</span>
-        <span class="tm-kpi-value">{{ analytics.total_classes }}</span>
-        <span class="tm-kpi-sub">{{ analytics.classes_with_ct }} with class teacher</span>
-      </div>
-    </div>
-    <div class="tm-kpi">
-      <div class="tm-kpi-icon purple">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
-      </div>
-      <div class="tm-kpi-body">
-        <span class="tm-kpi-label">Subjects</span>
-        <span class="tm-kpi-value">{{ analytics.total_subjects }}</span>
-        <span class="tm-kpi-sub">{{ analytics.unassigned_subjects }} not assigned anywhere</span>
-      </div>
-    </div>
-    <div class="tm-kpi">
-      <div class="tm-kpi-icon success">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
-      </div>
-      <div class="tm-kpi-body">
-        <span class="tm-kpi-label">Assignments</span>
-        <span class="tm-kpi-value">{{ analytics.total_assignments }}</span>
-        <span class="tm-kpi-sub">{{ analytics.subjects_with_teacher }} with a teacher</span>
-      </div>
-    </div>
-    <div class="tm-kpi">
-      <div class="tm-kpi-icon warn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      </div>
-      <div class="tm-kpi-body">
-        <span class="tm-kpi-label">Missing Class Teacher</span>
-        <span class="tm-kpi-value">{{ analytics.classes_without_ct }}</span>
-        <span class="tm-kpi-sub">Classes without a class teacher</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="tm-actions-bar">
-    <button type="button" class="tm-btn tm-btn-primary" onclick="openModal('subjectModal')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-      Add Subject
-    </button>
-    <button type="button" class="tm-btn tm-btn-primary" onclick="openModal('assignModal')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-      Assign Subject
-    </button>
-    <button type="button" class="tm-btn tm-btn-primary" onclick="openModal('classTeacherModal')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
-      Assign Class Teacher
-    </button>
-  </section>
-
-  <nav class="tm-tabs">
-    <a href="{% url 'teachers_management_subjects' schema_name=tenant.schema_name %}"
-       class="tm-tab {% if active_tab == 'subjects' %}active{% endif %}">
-      Subjects <span class="tm-tab-badge">{{ analytics.total_subjects }}</span>
-    </a>
-    <a href="{% url 'teachers_management_assignments' schema_name=tenant.schema_name %}"
-       class="tm-tab {% if active_tab == 'assignments' %}active{% endif %}">
-      Assignments <span class="tm-tab-badge">{{ analytics.total_assignments }}</span>
-    </a>
-    <a href="{% url 'teachers_management_class_teachers' schema_name=tenant.schema_name %}"
-       class="tm-tab {% if active_tab == 'class-teachers' %}active{% endif %}">
-      Class Teachers <span class="tm-tab-badge">{{ analytics.classes_with_ct }}/{{ analytics.total_classes }}</span>
-    </a>
-  </nav>
-
-  {% if active_tab == 'subjects' %}
-  <section class="tm-card">
-    <div class="tm-card-head">
-      <h3>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 14l9-5-9-5-9 5 9 5z"/></svg>
-        Subject Catalog
-      </h3>
-      <button type="button" class="tm-btn tm-btn-primary tm-btn-sm" onclick="openModal('subjectModal')">+ Add Subject</button>
-    </div>
-    <div class="tm-table-wrap">
-      <table class="tm-table">
-        <thead>
-          <tr>
-            <th>Subject</th>
-            <th>Code</th>
-            <th>Description</th>
-            <th style="text-align:right;">Assigned To</th>
-            <th style="text-align:right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for subj in subjects %}
-          <tr>
-            <td><strong>{{ subj.name }}</strong></td>
-            <td><span class="tm-chip primary">{{ subj.code }}</span></td>
-            <td class="tm-muted">{{ subj.description|default:"—" }}</td>
-            <td style="text-align:right;">{{ subj.class_subjects.all|length }}</td>
-            <td>
-              <div class="tm-row-actions">
-                <button class="tm-icon-btn" title="Edit"
-                        onclick="editSubject({{ subj.id }}, '{{ subj.name|escapejs }}', '{{ subj.code|escapejs }}', '{{ subj.description|default:''|escapejs }}')">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4Z"/></svg>
-                </button>
-                <button class="tm-icon-btn" title="Delete"
-                        onclick="deleteSubject({{ subj.id }})">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="5">
-            <div class="tm-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 15h8M9 9h.01M15 9h.01"/></svg>
-              <h4>No subjects yet</h4>
-              <p>Click <strong>Add Subject</strong> to create your first subject.</p>
-            </div>
-          </td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endif %}
-
-  {% if active_tab == 'assignments' %}
-  <section class="tm-card">
-    <div class="tm-card-head">
-      <h3>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
-        Subject Assignments
-      </h3>
-      <button type="button" class="tm-btn tm-btn-primary tm-btn-sm" onclick="openModal('assignModal')">+ Assign Subject</button>
-    </div>
-    <div class="tm-table-wrap">
-      <table class="tm-table">
-        <thead>
-          <tr>
-            <th>Class</th>
-            <th>Subject</th>
-            <th>Teacher</th>
-            <th>Academic Year</th>
-            <th style="text-align:right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for a in assignments %}
-          <tr>
-            <td><strong>{{ a.class_display_name }}</strong></td>
-            <td>{{ a.subject.name }}</td>
-            <td>
-              {% if a.teacher %}
-                {{ a.teacher.full_name }}
-              {% else %}
-                <span class="tm-chip warn">Unassigned</span>
-              {% endif %}
-            </td>
-            <td class="tm-muted">{{ a.academic_year|default:"—" }}</td>
-            <td>
-              <div class="tm-row-actions">
-                <button class="tm-icon-btn" title="Edit"
-                        onclick="editAssignment({{ a.id }}, {{ a.school_class.id }}, {{ a.subject.id }}, {{ a.teacher.id|default:'null' }}, '{{ a.academic_year|default:''|escapejs }}')">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4Z"/></svg>
-                </button>
-                <button class="tm-icon-btn" title="Delete"
-                        onclick="deleteAssignment({{ a.id }})">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="5">
-            <div class="tm-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 15h8M9 9h.01M15 9h.01"/></svg>
-              <h4>No assignments yet</h4>
-              <p>Click <strong>Assign Subject</strong> to link a subject to a class.</p>
-            </div>
-          </td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endif %}
-
-  {% if active_tab == 'class-teachers' %}
-  <section class="tm-card">
-    <div class="tm-card-head">
-      <h3>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        Class Teachers
-      </h3>
-      <button type="button" class="tm-btn tm-btn-primary tm-btn-sm" onclick="openModal('classTeacherModal')">+ Assign Class Teacher</button>
-    </div>
-    <div class="tm-table-wrap">
-      <table class="tm-table">
-        <thead>
-          <tr>
-            <th>Class</th>
-            <th>Students</th>
-            <th>Class Teacher</th>
-            <th style="text-align:right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for cls in classes %}
-          <tr>
-            <td><strong>{{ cls.display_name }}</strong></td>
-            <td>{{ cls.student_count }}</td>
-            <td>
-              {% if cls.class_teacher %}
-                {{ cls.class_teacher.full_name }}
-              {% else %}
-                <span class="tm-chip warn">Not assigned</span>
-              {% endif %}
-            </td>
-            <td>
-              <div class="tm-row-actions">
-                <button class="tm-icon-btn" title="Change"
-                        onclick="openClassTeacherModal({{ cls.id }})">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4Z"/></svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="4">
-            <div class="tm-empty">
-              <h4>No classes yet</h4>
-              <p>Create a class from the Classes Management page first.</p>
-            </div>
-          </td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endif %}
-
-</div>
-
-<div id="subjectModal" class="tm-modal-backdrop">
-  <div class="tm-modal">
-    <div class="tm-modal-head">
-      <h3 id="subjectModalTitle">Add Subject</h3>
-      <button type="button" class="tm-modal-close" onclick="closeModal('subjectModal')">&times;</button>
-    </div>
-    <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm">
-      {% csrf_token %}
-      <input type="hidden" name="subject_id" id="subjectId">
-      <div class="tm-field">
-        <label>Subject Name</label>
-        <input type="text" name="name" id="subjectName" required placeholder="e.g., Mathematics">
-      </div>
-      <div class="tm-field">
-        <label>Code</label>
-        <input type="text" name="code" id="subjectCode" placeholder="Auto-generated if left blank">
-      </div>
-      <div class="tm-field">
-        <label>Description</label>
-        <textarea name="description" id="subjectDesc" rows="2"></textarea>
-      </div>
-      <div class="tm-modal-actions">
-        <button type="button" class="tm-btn tm-btn-ghost" onclick="closeModal('subjectModal')">Cancel</button>
-        <button type="submit" class="tm-btn tm-btn-primary" id="subjectSubmitBtn">Save Subject</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div id="assignModal" class="tm-modal-backdrop">
-  <div class="tm-modal">
-    <div class="tm-modal-head">
-      <h3 id="assignModalTitle">Assign Subject</h3>
-      <button type="button" class="tm-modal-close" onclick="closeModal('assignModal')">&times;</button>
-    </div>
-    <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm">
-      {% csrf_token %}
-      <input type="hidden" name="assignment_id" id="assignmentId">
-      <div class="tm-field">
-        <label>Class</label>
-        <select name="school_class" id="assignClass" required>
-          <option value="">Select Class</option>
-          {% for cls in classes %}
-          <option value="{{ cls.id }}">{{ cls.display_name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="tm-field">
-        <label>Subject</label>
-        <select name="subject" id="assignSubject" required>
-          <option value="">Select Subject</option>
-          {% for subj in subjects %}
-          <option value="{{ subj.id }}">{{ subj.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="tm-field">
-        <label>Teacher</label>
-        <select name="teacher" id="assignTeacher">
-          <option value="">Unassigned</option>
-          {% for t in teachers %}
-          <option value="{{ t.id }}">{{ t.full_name }}{% if t.job_title %} ({{ t.job_title }}){% endif %}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="tm-field">
-        <label>Academic Year</label>
-        <input type="text" name="academic_year" id="assignYear" placeholder="e.g., 2024-2025">
-      </div>
-      <div class="tm-modal-actions">
-        <button type="button" class="tm-btn tm-btn-ghost" onclick="closeModal('assignModal')">Cancel</button>
-        <button type="submit" class="tm-btn tm-btn-primary" id="assignSubmitBtn">Save Assignment</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div id="classTeacherModal" class="tm-modal-backdrop">
-  <div class="tm-modal">
-    <div class="tm-modal-head">
-      <h3>Assign Class Teacher</h3>
-      <button type="button" class="tm-modal-close" onclick="closeModal('classTeacherModal')">&times;</button>
-    </div>
-    <form method="post" action="{% url 'assign_class_teacher' schema_name=tenant.schema_name %}" id="classTeacherForm">
-      {% csrf_token %}
-      <div class="tm-field">
-        <label>Class</label>
-        <select name="class_id" id="ctClass" required>
-          <option value="">Select Class</option>
-          {% for cls in classes %}
-          <option value="{{ cls.id }}">{{ cls.display_name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="tm-field">
-        <label>Class Teacher</label>
-        <select name="teacher_id" id="ctTeacher">
-          <option value="">Unassign</option>
-          {% for t in teachers %}
-          <option value="{{ t.id }}">{{ t.full_name }}{% if t.job_title %} ({{ t.job_title }}){% endif %}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="tm-modal-actions">
-        <button type="button" class="tm-btn tm-btn-ghost" onclick="closeModal('classTeacherModal')">Cancel</button>
-        <button type="submit" class="tm-btn tm-btn-primary">Save</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<script>
-(function(){
-  const SCHEMA = '{{ tenant.schema_name|escapejs }}';
-
-  window.openModal = function(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('open');
-  };
-  window.closeModal = function(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('open');
-  };
-
-  document.querySelectorAll('.tm-modal-backdrop').forEach(function(backdrop){
-    backdrop.addEventListener('click', function(e){
-      if (e.target === backdrop) backdrop.classList.remove('open');
-    });
-  });
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') {
-      document.querySelectorAll('.tm-modal-backdrop.open').forEach(function(b){
-        b.classList.remove('open');
-      });
-    }
-  });
-
-  window.editSubject = function(id, name, code, desc) {
-    document.getElementById('subjectId').value = id;
-    document.getElementById('subjectName').value = name;
-    document.getElementById('subjectCode').value = code;
-    document.getElementById('subjectDesc').value = desc;
-    document.getElementById('subjectModalTitle').innerText = 'Edit Subject';
-    document.getElementById('subjectSubmitBtn').innerText = 'Update Subject';
-    document.getElementById('subjectForm').action = '/portal/' + SCHEMA + '/subjects/edit/' + id + '/';
-    window.openModal('subjectModal');
-  };
-
-  window.deleteSubject = function(id) {
-    if (!confirm('Deactivate this subject? Existing assignments will remain.')) return;
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/portal/' + SCHEMA + '/subjects/delete/' + id + '/';
-    form.innerHTML = `{% csrf_token %}`;
-    document.body.appendChild(form);
-    form.submit();
-  };
-
-  window.editAssignment = function(id, classId, subjectId, teacherId, year) {
-    document.getElementById('assignmentId').value = id;
-    document.getElementById('assignClass').value = classId;
-    document.getElementById('assignSubject').value = subjectId;
-    document.getElementById('assignTeacher').value = teacherId || '';
-    document.getElementById('assignYear').value = year || '';
-    document.getElementById('assignModalTitle').innerText = 'Edit Assignment';
-    document.getElementById('assignSubmitBtn').innerText = 'Update Assignment';
-    document.getElementById('assignForm').action = '/portal/' + SCHEMA + '/assignments/edit/' + id + '/';
-    window.openModal('assignModal');
-  };
-
-  window.deleteAssignment = function(id) {
-    if (!confirm('Deactivate this assignment?')) return;
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/portal/' + SCHEMA + '/assignments/delete/' + id + '/';
-    form.innerHTML = `{% csrf_token %}`;
-    document.body.appendChild(form);
-    form.submit();
-  };
-
-  window.openClassTeacherModal = function(classId) {
-    document.getElementById('ctClass').value = classId;
-    window.openModal('classTeacherModal');
-  };
-})();
-</script>
-{% endblock %}
-'''
-
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
-TESTS_INIT_FILE = 'axis_saas/tests/__init__.py'
-TESTS_INIT_CONTENT = ''
-
-TESTS_FILE = 'axis_saas/tests/test_teachers_management.py'
-TESTS_CONTENT = '''"""Tests for TEACHERS_MANAGEMENT_V1.
-
-Covers URL resolution, module imports, template presence, view module
-contract, and the legacy /classes/ redirect target.
-"""
-import ast
-from pathlib import Path
-
-from django.test import SimpleTestCase
-from django.urls import resolve, reverse
-
-
-class TeachersManagementURLTests(SimpleTestCase):
-    def test_teachers_management_url(self):
-        url = reverse('teachers_management', kwargs={'schema_name': 'ey'})
-        self.assertEqual(url, '/portal/ey/teachers/')
-
-    def test_teachers_management_subjects_url(self):
-        url = reverse(
-            'teachers_management_subjects', kwargs={'schema_name': 'ey'},
-        )
-        self.assertEqual(url, '/portal/ey/teachers/subjects/')
-
-    def test_teachers_management_assignments_url(self):
-        url = reverse(
-            'teachers_management_assignments', kwargs={'schema_name': 'ey'},
-        )
-        self.assertEqual(url, '/portal/ey/teachers/assignments/')
-
-    def test_teachers_management_class_teachers_url(self):
-        url = reverse(
-            'teachers_management_class_teachers',
-            kwargs={'schema_name': 'ey'},
-        )
-        self.assertEqual(url, '/portal/ey/teachers/class-teachers/')
-
-    def test_legacy_classes_url_still_resolves(self):
-        url = reverse('class_management', kwargs={'schema_name': 'ey'})
-        self.assertEqual(url, '/portal/ey/classes/')
-
-    def test_legacy_classes_resolves_to_redirect_view(self):
-        match = resolve('/portal/ey/classes/')
-        self.assertEqual(match.url_name, 'class_management')
-
-    def test_new_teachers_url_resolves_to_view(self):
-        match = resolve('/portal/ey/teachers/')
-        self.assertEqual(match.url_name, 'teachers_management')
-
-    def test_new_subjects_url_sets_active_tab(self):
-        match = resolve('/portal/ey/teachers/subjects/')
-        self.assertEqual(match.url_name, 'teachers_management_subjects')
-        self.assertEqual(match.kwargs.get('active_tab'), 'subjects')
-
-    def test_new_assignments_url_sets_active_tab(self):
-        match = resolve('/portal/ey/teachers/assignments/')
-        self.assertEqual(match.kwargs.get('active_tab'), 'assignments')
-
-    def test_new_class_teachers_url_sets_active_tab(self):
-        match = resolve('/portal/ey/teachers/class-teachers/')
-        self.assertEqual(match.kwargs.get('active_tab'), 'class-teachers')
-
-
-class TeachersManagementTemplateTests(SimpleTestCase):
-    def test_template_file_exists(self):
-        project_root = Path(__file__).resolve().parents[2]
-        tpl = project_root / 'templates' / 'tenant' / 'teachers_management.html'
-        self.assertTrue(
-            tpl.exists(),
-            f'Missing template file: {tpl}',
-        )
-
-    def test_template_is_valid_html_skeleton(self):
-        project_root = Path(__file__).resolve().parents[2]
-        tpl = project_root / 'templates' / 'tenant' / 'teachers_management.html'
-        if not tpl.exists():
-            self.skipTest('Template not present')
-        text = tpl.read_text(encoding='utf-8')
-        self.assertIn("{% extends 'tenant/base.html' %}", text)
-        self.assertIn('Teachers &amp; Academic Management', text)
-        self.assertIn('teachers_management_subjects', text)
-        self.assertIn('teachers_management_assignments', text)
-        self.assertIn('teachers_management_class_teachers', text)
-
-    def test_template_does_not_use_classes_sections_tab(self):
-        project_root = Path(__file__).resolve().parents[2]
-        tpl = project_root / 'templates' / 'tenant' / 'teachers_management.html'
-        if not tpl.exists():
-            self.skipTest('Template not present')
-        text = tpl.read_text(encoding='utf-8').lower()
-        self.assertNotIn('classes &amp; sections', text)
-        self.assertNotIn('classes & sections', text)
-
-    def test_template_uses_display_name_not_raw_str(self):
-        """The template must rely on the pre-computed display_name so
-        wing vs single school renders correctly."""
-        project_root = Path(__file__).resolve().parents[2]
-        tpl = project_root / 'templates' / 'tenant' / 'teachers_management.html'
-        if not tpl.exists():
-            self.skipTest('Template not present')
-        text = tpl.read_text(encoding='utf-8')
-        self.assertIn('cls.display_name', text)
-        self.assertIn('a.class_display_name', text)
-
-
-class TeachersManagementViewModuleTests(SimpleTestCase):
-    def test_view_module_imports(self):
-        from axis_saas.views.teachers_management import (
-            VALID_TABS, teachers_management_redirect, teachers_management_view,
-        )
-        self.assertTrue(callable(teachers_management_view))
-        self.assertTrue(callable(teachers_management_redirect))
-        self.assertEqual(
-            set(VALID_TABS),
-            {'subjects', 'assignments', 'class-teachers'},
-        )
-
-    def test_view_module_is_valid_python(self):
-        import axis_saas.views.teachers_management as mod
-        src = Path(mod.__file__).read_text(encoding='utf-8')
-        ast.parse(src)
-
-
-class TeachersManagementRedirectContractTests(SimpleTestCase):
-    def test_redirect_view_returns_302(self):
-        from axis_saas.views.teachers_management import (
-            teachers_management_redirect,
-        )
-        from django.http import HttpResponseRedirect
-        # The view calls django.shortcuts.redirect which returns a
-        # HttpResponseRedirect — assert on the type without needing a
-        # real tenant.
-        from django.test import RequestFactory
-        rf = RequestFactory()
-        req = rf.get('/portal/ey/classes/')
-        result = teachers_management_redirect(req, 'ey')
-        self.assertIsInstance(result, HttpResponseRedirect)
-        self.assertEqual(result.url, '/portal/ey/teachers/')
-
-
-class TeachersManagementFeatureGateTests(SimpleTestCase):
-    def test_view_module_declares_required_decorators(self):
-        """Sanity check: the view must still be feature-gated on
-        `class_management`, matching the previous URL behaviour."""
-        import axis_saas.views.teachers_management as mod
-        src = Path(mod.__file__).read_text(encoding='utf-8')
-        self.assertIn("@require_school_feature('class_management')", src)
-        self.assertIn("@require_tenant_type(['school'])", src)
-'''
-
-
-# ---------------------------------------------------------------------------
-# Patcher core
-# ---------------------------------------------------------------------------
-def _read(path):
-    return Path(path).read_text(encoding='utf-8')
-
-
-def _write(path, content, dry_run):
-    if dry_run:
-        log(f'[dry-run] would write {path} ({len(content)} bytes)')
-        return
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(content, encoding='utf-8')
-    log(f'Wrote {path} ({len(content)} bytes)')
-
-
-def _validate_python(content, label):
+def write_py(path, content, dry_run):
     try:
         ast.parse(content)
-        return True
     except SyntaxError as e:
-        log(f'Python syntax error in {label}: {e}', 'ERROR')
+        log(f'syntax error in {path}: {e}', 'ERROR')
+        return False
+    if dry_run:
+        log(f'[dry-run] would write {path}')
+        return True
+    path.write_text(content, encoding='utf-8')
+    log(f'wrote {path}')
+    return True
+
+
+def replace_exact(path, old, new, dry_run):
+    if not path.exists():
+        log(f'missing file: {path}', 'ERROR')
+        return False
+    content = read(path)
+    if new and new in content and old not in content:
+        log(f'already applied in {path}')
+        return True
+    count = content.count(old)
+    if count == 0:
+        log(f'anchor not found in {path}', 'WARN')
+        return False
+    if count > 1:
+        log(f'anchor appears {count} times in {path}, replacing first', 'WARN')
+    new_content = content.replace(old, new, 1)
+    return write_py(path, new_content, dry_run)
+
+
+def run(cmd, dry_run):
+    if dry_run:
+        log(f'[dry-run] would run: {" ".join(cmd)}')
+        return True
+    log(f'running: {" ".join(cmd)}')
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.stdout:
+            print(r.stdout)
+        if r.stderr:
+            print(r.stderr, file=sys.stderr)
+        if r.returncode != 0:
+            log(f'command failed ({r.returncode})', 'ERROR')
+            return False
+        return True
+    except Exception as e:
+        log(f'command error: {e}', 'ERROR')
         return False
 
 
-def _create_file(path, content, dry_run):
-    if os.path.exists(path):
-        log(f'Already exists, skipping creation: {path}')
-        return
-    if path.endswith('.py') and not _validate_python(content, path):
-        return
-    _write(path, content, dry_run)
-
-
-def _patch_public_urls(target_dir, dry_run):
-    path = os.path.join(target_dir, 'axis_saas', 'public_urls.py')
-    if not os.path.exists(path):
-        log(f'Not found: {path}', 'ERROR')
-        return
-    original = _read(path)
-    content = original
-
-    import_anchor = (
-        "from .views import mobile_fee_structure, add_student,"
-    )
-    if import_anchor not in content:
-        log('public_urls.py: import anchor not found', 'ERROR')
-        return
-
-    import_line = (
-        "from .views.teachers_management import "
-        "(teachers_management_view, teachers_management_redirect)"
-    )
-    if import_line in content:
-        log('public_urls.py: import already present, skipping')
-    else:
-        content = content.replace(
-            import_anchor,
-            import_line + '\n' + import_anchor,
-            1,
-        )
-        log('public_urls.py: added teachers_management import')
-
-    url_anchor = (
-        "    path('portal/<slug:schema_name>/classes/', "
-        "portal_wrapper(login_required_for_schema(class_management)), "
-        "name='class_management'),"
-    )
-    if url_anchor not in content:
-        log('public_urls.py: /classes/ url anchor not found', 'ERROR')
-        return
-
-    replacement = (
-        "    # TEACHERS_MANAGEMENT_V1: legacy /classes/ redirects to /teachers/\n"
-        "    path('portal/<slug:schema_name>/classes/', "
-        "portal_wrapper(login_required_for_schema(teachers_management_redirect)), "
-        "name='class_management'),\n"
-        "    path('portal/<slug:schema_name>/teachers/', "
-        "portal_wrapper(login_required_for_schema(teachers_management_view)), "
-        "name='teachers_management'),\n"
-        "    path('portal/<slug:schema_name>/teachers/subjects/', "
-        "portal_wrapper(login_required_for_schema(teachers_management_view)), "
-        "{'active_tab': 'subjects'}, name='teachers_management_subjects'),\n"
-        "    path('portal/<slug:schema_name>/teachers/assignments/', "
-        "portal_wrapper(login_required_for_schema(teachers_management_view)), "
-        "{'active_tab': 'assignments'}, name='teachers_management_assignments'),\n"
-        "    path('portal/<slug:schema_name>/teachers/class-teachers/', "
-        "portal_wrapper(login_required_for_schema(teachers_management_view)), "
-        "{'active_tab': 'class-teachers'}, "
-        "name='teachers_management_class_teachers'),"
-    )
-
-    if "name='teachers_management'" in content:
-        log('public_urls.py: teachers_management URLs already present, skipping')
-    else:
-        content = content.replace(url_anchor, replacement, 1)
-        log('public_urls.py: added /teachers/ URLs and legacy redirect')
-
-    if content == original:
-        log('public_urls.py: no changes needed')
-        return
-
-    if not _validate_python(content, 'public_urls.py'):
-        log('public_urls.py: refusing to write, syntax error', 'ERROR')
-        return
-
-    _write(path, content, dry_run)
-
-
-def _patch_classes_view(target_dir, dry_run):
-    path = os.path.join(target_dir, 'axis_saas', 'views', 'classes.py')
-    if not os.path.exists(path):
-        log(f'Not found: {path}', 'ERROR')
-        return
-    original = _read(path)
-    content = original
-
-    old = "redirect_with_cache_bust('class_management', schema_name)"
-    new = "redirect_with_cache_bust('teachers_management', schema_name)"
-    count = content.count(old)
-    if count == 0:
-        log('views/classes.py: no redirect_with_cache_bust targets found')
-        return
-    content = content.replace(old, new)
-    log(f'views/classes.py: replaced {count} redirect target(s)')
-
-    if not _validate_python(content, 'views/classes.py'):
-        log('views/classes.py: refusing to write, syntax error', 'ERROR')
-        return
-
-    _write(path, content, dry_run)
-
-
-def _create_new_files(target_dir, dry_run):
-    files = [
-        (NEW_VIEW_FILE, NEW_VIEW_CONTENT, True),
-        (NEW_TEMPLATE_FILE, NEW_TEMPLATE_CONTENT, False),
-        (TESTS_INIT_FILE, TESTS_INIT_CONTENT, False),
-        (TESTS_FILE, TESTS_CONTENT, False),
-    ]
-    for rel, content, is_python in files:
-        full = os.path.join(target_dir, rel)
-        if is_python and not _validate_python(content, rel):
-            continue
-        _create_file(full, content, dry_run)
-
-
-def _run_subprocess(cmd, cwd, dry_run):
-    if dry_run:
-        log(f'[dry-run] would run: {" ".join(cmd)}')
-        return
-    log(f'Running: {" ".join(cmd)}')
-    try:
-        result = subprocess.run(
-            cmd, cwd=cwd, capture_output=True, text=True, timeout=300,
-        )
-        if result.stdout:
-            print(result.stdout)
-        if result.stderr:
-            print(result.stderr, file=sys.stderr)
-        if result.returncode != 0:
-            log(f'Command failed with exit {result.returncode}', 'WARN')
-        else:
-            log('Command succeeded')
-    except Exception as e:
-        log(f'Subprocess error: {e}', 'ERROR')
-
-
-def _post_patch(target_dir, dry_run):
-    _run_subprocess(
-        [sys.executable, 'manage.py', 'check'],
-        cwd=target_dir, dry_run=dry_run,
-    )
-    test_path = 'axis_saas.tests.test_teachers_management'
-    _run_subprocess(
-        [sys.executable, 'manage.py', 'test', test_path, '--verbosity=2'],
-        cwd=target_dir, dry_run=dry_run,
-    )
-
-
 def main():
-    parser = argparse.ArgumentParser(
-        description='AXIS Patcher — Teachers Management page refactor',
-    )
+    parser = argparse.ArgumentParser()
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--verbose', action='store_true')
-    parser.add_argument(
-        '--target-dir', default=os.getcwd(),
-        help='Project root (default: cwd)',
-    )
+    parser.add_argument('--target-dir', default='.')
     args = parser.parse_args()
+    root = Path(args.target_dir).resolve()
+    log(f'target: {root}')
 
-    target_dir = os.path.abspath(args.target_dir)
-    log(f'Target dir: {target_dir}')
-    log(f'Dry run: {args.dry_run}')
+    view_path = root / 'axis_saas' / 'views' / 'assign_teachers.py'
 
-    if not os.path.exists(os.path.join(target_dir, 'manage.py')):
-        log('manage.py not found — refusing to run', 'ERROR')
-        sys.exit(1)
+    # =================================================================
+    # ASSIGN_PERIODS_COUNT_MERGE_FIX_V1
+    #
+    # The "Assigned Periods" column on the assign-teachers page showed
+    # an inflated "X/Y" — e.g. 41/49 when only 41 (out of a real 41)
+    # were filled. Root cause: `total_periods` summed `periods_count`
+    # from EVERY timetable assigned to the class, so overlapping
+    # periods on the same day were counted twice (once per timetable).
+    #
+    # The API grid, however, MERGES the assigned timetables into one
+    # union view — days are keyed by day_of_week and periods are keyed
+    # by order, so a slot shared by two timetables appears exactly
+    # once. The table header contradicted the grid it opened.
+    #
+    # Fix: compute `total_periods` from the same merged union the API
+    # uses, so both numbers agree.
+    # =================================================================
+    old_count = """        class_rows = []
+        for g in _grouped.values():
+            total_periods = 0
+            for _tt in g['timetables']:
+                for _d in (_tt.days or []):
+                    try:
+                        total_periods += int(_d.get('periods_count') or 0)
+                    except (TypeError, ValueError):
+                        pass
+            _label_display = ', '.join(g['labels']) or 'Timetable'
+            class_rows.append({"""
+    new_count = """        class_rows = []
+        for g in _grouped.values():
+            # ASSIGN_PERIODS_COUNT_MERGE_FIX_V1: sum DISTINCT
+            # (day_of_week, period_order) pairs across every timetable
+            # assigned to this class. The grid the Manage button opens
+            # uses the same union view (see api_get_teacher_assignments
+            # — _merged_days_by_dow), so this count now matches it.
+            _merged_orders = {}
+            for _tt in g['timetables']:
+                if _tt is None:
+                    continue
+                for _d in (_tt.days or []):
+                    _dow = _d.get('day_of_week')
+                    if _dow is None:
+                        continue
+                    _bucket = _merged_orders.setdefault(_dow, set())
+                    for _p in (_d.get('periods') or []):
+                        if _p.get('is_break'):
+                            continue
+                        _order = _p.get('order')
+                        if _order is not None:
+                            _bucket.add(_order)
+            total_periods = sum(len(_s) for _s in _merged_orders.values())
+            _label_display = ', '.join(g['labels']) or 'Timetable'
+            class_rows.append({"""
+    replace_exact(view_path, old_count, new_count, args.dry_run)
 
-    log('--- Creating new files ---')
-    _create_new_files(target_dir, args.dry_run)
+    if view_path.exists() and not args.dry_run:
+        run([sys.executable, '-m', 'py_compile', str(view_path)], args.dry_run)
 
-    log('--- Patching public_urls.py ---')
-    _patch_public_urls(target_dir, args.dry_run)
-
-    log('--- Patching views/classes.py ---')
-    _patch_classes_view(target_dir, args.dry_run)
-
-    log('--- Post-patch automation ---')
-    _post_patch(target_dir, args.dry_run)
-
-    log('--- Done ---')
+    log('done')
 
 
 if __name__ == '__main__':

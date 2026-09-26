@@ -34,11 +34,26 @@ def timetable_assignments(request, schema_name):
     with schema_context(schema_name):
         assignments = list(
             ClassTimetableAssignment.objects
-            .select_related('school_class__wing_category', 'timetable')
-            .order_by('school_class__name', 'school_class__section')
+            .select_related('school_class__wing_category', 'timetable', 'timetable__label')
+            .order_by('school_class__name', 'school_class__section', 'timetable__title')
         )
         for a in assignments:
             a.class_display_name = get_class_display_name(a.school_class, tenant.tenant_type)
+
+        # GROUP_ASSIGNMENTS_V1: one row per class, timetables listed inside.
+        class_groups = []
+        _group_index = {}
+        for a in assignments:
+            key = a.school_class_id
+            if key not in _group_index:
+                group = {
+                    'school_class': a.school_class,
+                    'class_display_name': a.class_display_name,
+                    'assignments': [],
+                }
+                _group_index[key] = group
+                class_groups.append(group)
+            _group_index[key]['assignments'].append(a)
 
         all_classes = list(
             SchoolClass.objects.filter(is_active=True)
@@ -53,6 +68,7 @@ def timetable_assignments(request, schema_name):
     context = {
         'tenant': tenant,
         'assignments': assignments,
+        'class_groups': class_groups,
         'all_classes': all_classes,
         'timetables': timetables,
         'logo_url': tenant.school_logo.url if tenant.school_logo else None,

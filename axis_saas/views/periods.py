@@ -601,14 +601,52 @@ def api_add_bunch(request, schema_name):
         # if another timetable under the same label already uses the
         # same (day, start, end) slot. Without this, direct API calls
         # could persist overlapping timetables.
+        #
+        # ASSIGN_TEACHERS_MULTI_TIMETABLE_EDIT_V1: when the client
+        # supplies class_id (the assign-teachers inline-edit form
+        # does), EVERY timetable currently assigned to that class is
+        # excluded from the overlap check. A class may legitimately
+        # hold several timetables under the SAME label (e.g. a
+        # Mon-Thu block + a Friday block). The assign-teachers modal
+        # merges them into one grid, and the admin edits that merged
+        # view. Without this exclusion the save would always collide
+        # with the class's own sibling timetable — exactly the
+        # "seniors friday timetable" false positive this fixes.
         requested_slots = set()
         for _cd in computed_days:
             requested_slots.add(
                 (_cd['day_of_week'], _cd['start'], _cd['end'])
             )
-        _overlap_qs = PeriodsTimetable.objects.filter(label=_schedule_label)
+
+        _exclude_ids = set()
         if edit_id is not None:
-            _overlap_qs = _overlap_qs.exclude(id=edit_id)
+            _exclude_ids.add(edit_id)
+
+        _class_id = None
+        try:
+            _raw_class_id = data.get('class_id')
+            if _raw_class_id not in (None, '', 'null'):
+                _class_id = int(_raw_class_id)
+        except (TypeError, ValueError):
+            _class_id = None
+
+        if _class_id is not None:
+            try:
+                for _tid in (
+                    ClassTimetableAssignment.objects
+                    .filter(school_class_id=_class_id)
+                    .values_list('timetable_id', flat=True)
+                ):
+                    _exclude_ids.add(_tid)
+            except Exception as _exc:
+                logger.warning(
+                    'overlap-exclude: class timetable lookup failed: %s',
+                    _exc,
+                )
+
+        _overlap_qs = PeriodsTimetable.objects.filter(label=_schedule_label)
+        if _exclude_ids:
+            _overlap_qs = _overlap_qs.exclude(id__in=list(_exclude_ids))
         _overlap_hits = []
         _day_names = dict(DaySchedule.DAY_CHOICES)
         for _other in _overlap_qs:

@@ -145,10 +145,10 @@
 <div class="card">
     <div class="card-header">
         <h3>Current Assignments</h3>
-        <span class="text-muted" style="font-size:0.85rem;">{{ assignments|length }} assignment{{ assignments|length|pluralize }}</span>
+        <span class="text-muted" style="font-size:0.85rem;">{{ class_groups|length }} class{{ class_groups|length|pluralize:"es" }} · {{ assignments|length }} timetable{{ assignments|length|pluralize }}</span>
     </div>
 
-    {% if assignments %}
+    {% if class_groups %}
     <div style="overflow-x:auto;">
         <table class="data-table">
             <thead>
@@ -160,33 +160,41 @@
                 </tr>
             </thead>
             <tbody>
-                {% for a in assignments %}
+                {% for g in class_groups %}
                 <tr>
                     <td>
-                        <a href="{% url 'class_detailed' schema_name=tenant.schema_name class_id=a.school_class.id %}"
+                        <a href="{% url 'class_detailed' schema_name=tenant.schema_name class_id=g.school_class.id %}"
                            style="color:var(--primary); font-weight:600; text-decoration:none;">
-                            {{ a.class_display_name }}
+                            {{ g.class_display_name }}
                         </a>
                     </td>
                     <td>
-                        <span class="tag tag-blue">{{ a.timetable.title }}</span>
-                        {% if a.timetable.label_id %}
-                        <span class="text-muted" style="font-size:0.8rem;"> · {{ a.timetable.label.name }}</span>
-                        {% endif %}
+                        {% for a in g.assignments %}
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; padding:0.3rem 0;{% if not forloop.last %} border-bottom:1px dashed var(--border);{% endif %}">
+                            <span class="tag tag-blue">{{ a.timetable.title }}</span>
+                            {% if a.timetable.label_id %}
+                            <span class="text-muted" style="font-size:0.8rem;">{{ a.timetable.label.name }}</span>
+                            {% endif %}
+                            <a href="{% url 'timetable_periods' schema_name=tenant.schema_name %}?highlight={{ a.timetable.id }}"
+                               class="btn-secondary btn-sm" style="text-decoration:none;">View</a>
+                            <form method="post" action="{% url 'api_unassign_timetable' schema_name=tenant.schema_name %}"
+                                  style="display:inline-block;"
+                                  onsubmit="return confirm('Unassign {{ a.timetable.title|escapejs }} from {{ g.class_display_name|escapejs }}?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="assignment_id" value="{{ a.id }}">
+                                <button type="submit" class="btn-danger btn-sm">Unassign</button>
+                            </form>
+                        </div>
+                        {% endfor %}
                     </td>
-                    <td class="text-muted" style="font-size:0.85rem;">{{ a.assigned_at|date:"Y-m-d H:i" }}</td>
-                    <td style="text-align:right; white-space:nowrap;">
-                        <a href="{% url 'class_detailed' schema_name=tenant.schema_name class_id=a.school_class.id %}"
-                           class="btn-secondary btn-sm" style="text-decoration:none; margin-right:0.3rem;">View Class</a>
-                        <a href="{% url 'timetable_periods' schema_name=tenant.schema_name %}?highlight={{ a.timetable.id }}"
-                           class="btn-secondary btn-sm" style="text-decoration:none;">View Timetable</a>
-                        <form method="post" action="{% url 'api_unassign_timetable' schema_name=tenant.schema_name %}"
-                              style="display:inline-block; margin-left:0.3rem;"
-                              onsubmit="return confirm('Unassign this timetable from {{ a.class_display_name|escapejs }}?');">
-                            {% csrf_token %}
-                            <input type="hidden" name="assignment_id" value="{{ a.id }}">
-                            <button type="submit" class="btn-danger btn-sm">Unassign</button>
-                        </form>
+                    <td class="text-muted" style="font-size:0.85rem; vertical-align:top;">
+                        {% for a in g.assignments %}
+                        <div style="padding:0.3rem 0;{% if not forloop.last %} border-bottom:1px dashed var(--border);{% endif %}">{{ a.assigned_at|date:"Y-m-d H:i" }}</div>
+                        {% endfor %}
+                    </td>
+                    <td style="text-align:right; white-space:nowrap; vertical-align:top;">
+                        <a href="{% url 'class_detailed' schema_name=tenant.schema_name class_id=g.school_class.id %}"
+                           class="btn-secondary btn-sm" style="text-decoration:none;">View Class</a>
                     </td>
                 </tr>
                 {% endfor %}
