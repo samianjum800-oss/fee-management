@@ -15,6 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Build the user manual that Django serves under /help/.
+RUN python -m mkdocs build --strict
+
 # Create persistent directories
 RUN mkdir -p /data/staticfiles /data/media
 ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy

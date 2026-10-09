@@ -2,6 +2,8 @@
 
 Welcome to the AXIS user guides. These pages are for school administrators, teachers, and staff. They explain the screens and actions available in AXIS; you do not need to know how the software is built.
 
+Open this Help Center from your AXIS site at `/help/`. The shorter `/help` address redirects here as well.
+
 <div class="grid cards" markdown>
 
 -   :material-school-outline: **Start here**

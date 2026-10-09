@@ -9,3 +9,4 @@ Pillow==11.0.0
 webauthn==3.0.0
 redis
 django-redis
+mkdocs-material==9.7.7

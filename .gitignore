@@ -21,3 +21,6 @@ env/
 
 # ATTENDANCE_CRON_SETUP_V1 — cron log output
 logs/
+
+# Generated MkDocs output served by AXIS at /help/.
+/help_site/

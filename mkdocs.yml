@@ -1,5 +1,6 @@
 site_name: AXIS Help Center
 site_description: User guides for the AXIS school management portal
+site_dir: help_site
 
 nav:
   - Home: index.md
