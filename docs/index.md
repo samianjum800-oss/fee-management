@@ -52,6 +52,14 @@ Welcome to the AXIS user guides. These pages are for school administrators, teac
 
     [:octicons-arrow-right-24: Notifications](notifications.md) · [Mobile apps](mobile-app.md)
 
+-   :material-shield-account-outline: **Account security**
+
+    ---
+
+    Respond to a suspected account compromise, lost device, or passkey issue.
+
+    [:octicons-arrow-right-24: Account security](account-security.md)
+
 -   :material-package-variant: **Inventory and timetable**
 
     ---
@@ -72,6 +80,7 @@ Welcome to the AXIS user guides. These pages are for school administrators, teac
 | A staff member requesting time off | [Leave management](leave.md) |
 | Managing classes, subjects, and teaching assignments | [Classes and staff](classes-and-staff.md), then [Timetable](timetable.md) |
 | Installing AXIS on a phone | [Mobile and installed apps](mobile-app.md) |
+| A staff account or school-admin account may be compromised | [Account security](account-security.md) |
 
 !!! note "What these guides cover"
     AXIS shows different pages according to the school setup and enabled features. If a menu item described here is not visible, ask your school administrator whether that feature is enabled for your school. A school administrator cannot use a page that has not been enabled simply by changing the address.

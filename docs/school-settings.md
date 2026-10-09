@@ -83,4 +83,4 @@ Feature availability is controlled by the school/AXIS setup, not by the profile 
 
 ## Related guides
 
-[Getting started](getting-started.md) · [Students](students.md) · [Classes and staff](classes-and-staff.md)
+[Getting started](getting-started.md) · [Students](students.md) · [Classes and staff](classes-and-staff.md) · [Account security](account-security.md)

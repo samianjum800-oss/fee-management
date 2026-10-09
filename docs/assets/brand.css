@@ -1,0 +1,65 @@
+/* AXIS Help Center: restrained navy, warm brass, clear reading rhythm. */
+:root {
+  --axis-navy: #173b5e;
+  --axis-navy-deep: #102a43;
+  --axis-brass: #bd9143;
+  --axis-paper: #f6f8fb;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--axis-navy);
+  --md-primary-fg-color--light: #2a5277;
+  --md-primary-fg-color--dark: var(--axis-navy-deep);
+  --md-accent-fg-color: var(--axis-brass);
+  --md-default-bg-color: var(--axis-paper);
+  --md-default-fg-color: #1d2e3c;
+  --md-typeset-a-color: #87652f;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #102a43;
+  --md-primary-fg-color--light: #244562;
+  --md-primary-fg-color--dark: #0a1d30;
+  --md-accent-fg-color: #d1a653;
+  --md-default-bg-color: #111d2b;
+  --md-typeset-a-color: #e0bb73;
+}
+
+.md-header {
+  box-shadow: 0 2px 14px rgb(16 42 67 / 14%);
+}
+
+.md-header__button.md-logo img,
+.md-nav__title .md-logo img {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.md-typeset h1 {
+  color: var(--md-primary-fg-color);
+  font-weight: 750;
+}
+
+.md-typeset h2 {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--md-primary-fg-color) 14%, transparent);
+}
+
+.md-typeset .grid.cards > ul > li {
+  border-top: 2px solid var(--md-accent-fg-color);
+  border-radius: 0.35rem;
+  box-shadow: 0 4px 18px rgb(16 42 67 / 7%);
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 0.35rem;
+}
+
+.md-typeset table:not([class]) th {
+  background: color-mix(in srgb, var(--md-primary-fg-color) 7%, var(--md-default-bg-color));
+}
+
+.md-footer {
+  background-color: var(--axis-navy-deep);
+}

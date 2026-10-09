@@ -97,7 +97,7 @@ Open **More** → **Notifications** to review staff notices. Open the notice or 
 ## Common scenarios
 
 - **First sign-in:** Use the administrator-provided account, complete any requested passkey setup, and check that your name and role are correct in Profile.
-- **New phone:** Sign in with your username/password. If a passkey is required, use a device/account that has the passkey or ask the administrator to disable/reconfigure biometric login.
+- **New phone:** Use the [new-device passkey steps](account-security.md#biometric-is-enabled-but-you-are-signing-in-on-another-device). If the passkey is not synced, ask the administrator to temporarily disable biometric enforcement while you register the new device.
 - **Forgotten password:** Contact the school administrator for a reset. A reset signs out all active devices.
 - **You cannot see a class:** Ask the administrator to check that you are active and assigned as class teacher or subject teacher.
 - **Device lost:** Tell the administrator immediately, ask them to disable biometric access if needed, and reset your staff password.
@@ -132,4 +132,4 @@ AXIS ends all active sessions for that staff member after a password change or a
 
 ## Related guides
 
-[Classes and staff](classes-and-staff.md) · [Attendance](attendance.md) · [Leave management](leave.md) · [Mobile and installed apps](mobile-app.md) · [Getting started](getting-started.md)
+[Classes and staff](classes-and-staff.md) · [Attendance](attendance.md) · [Leave management](leave.md) · [Mobile and installed apps](mobile-app.md) · [Account security](account-security.md) · [Getting started](getting-started.md)

@@ -5,6 +5,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Mobile and Installed Apps: mobile-app.md
+  - Account Security: account-security.md
   - School Administration:
       - Dashboard: dashboard.md
       - School Settings: school-settings.md
@@ -23,6 +24,11 @@ nav:
 theme:
   name: material
   language: en
+  font:
+    text: Manrope
+    code: Roboto Mono
+  logo: assets/axis-logo.svg
+  favicon: assets/axis-logo.svg
   features:
     - navigation.sections
     - navigation.expand
@@ -33,17 +39,23 @@ theme:
     - content.code.copy
   palette:
     - scheme: default
-      primary: indigo
+      primary: blue grey
       accent: amber
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: indigo
+      primary: blue grey
       accent: amber
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+
+extra:
+  generator: false
+
+extra_css:
+  - assets/brand.css
 
 plugins:
   - search
