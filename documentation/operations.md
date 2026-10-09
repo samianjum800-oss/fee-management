@@ -1,5 +1,7 @@
 # AXIS Development and Operations
 
+For a clean-machine, end-to-end local setup with install, database, Redis, migration, tenant creation, and run commands, start with [Getting Started](getting-started.md).
+
 ## Requirements and local setup
 
 Runtime dependencies are pinned in `requirements.txt`: Django 4.2.16, django-tenants 3.5.0, psycopg2-binary, dj-database-url, WhiteNoise, Gunicorn, django-environ, Pillow, WebAuthn, Redis, and django-redis. The Docker image uses Python 3.11 and installs PostgreSQL client build dependencies. PostgreSQL is mandatory for the configured schema-tenancy backend; Redis is the configured cache backend.

@@ -5,6 +5,7 @@ This folder is the developer handbook for the AXIS Django multi-tenant school ma
 ## Find your way
 
 | I need to... | Read |
+| Set up AXIS on a fresh Ubuntu machine with terminal commands | [Getting Started](getting-started.md) |
 |---|---|
 | Understand runtime structure, tenant isolation, authentication, or request flow | [Architecture](architecture.md) |
 | Understand school/staff features and their major workflows | [Features](features.md) |
@@ -31,7 +32,7 @@ This handbook intentionally distinguishes source code from generated `staticfile
 
 1. Read [Architecture](architecture.md), especially the schema-routing and authentication sections.
 2. Follow a feature from [Features](features.md) to its route in [API and Routes](api.md), then to its owning view/model in [Code Map](code-map.md) and [Data Model](data-model.md).
-3. Set up a local PostgreSQL and Redis environment using [Operations](operations.md); the fallback database settings do not create a usable local database.
+3. Follow [Getting Started](getting-started.md) for a copy-paste Ubuntu setup; use [Operations](operations.md) for environment details and deployment behavior.
 4. Run focused tests before changing tenant-aware behavior. Review the test suite list in [Code Map](code-map.md).
 
 ## Accuracy boundary
