@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title">
   <title id="title">AXIS</title>
   <rect x="8" y="8" width="176" height="176" rx="38" fill="#173b5e"/>
-  <path d="M48 148 87 57c4-10 14-10 18 0l39 91" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="square" stroke-linejoin="round"/>
-  <path d="M67 111h58" fill="none" stroke="#d7ad58" stroke-width="9" stroke-linecap="round"/>
-  <path d="m96 101 10 10-10 10-10-10z" fill="#f1d28a" stroke="#173b5e" stroke-width="3"/>
+  <path d="M34 151 79 48c4-10 10-16 17-16s13 6 17 16l45 103h-29L96 80 63 151Z" fill="#f8fafc"/>
+  <path d="M72 126h48" fill="none" stroke="#d7ad58" stroke-width="10" stroke-linecap="butt"/>
 </svg>
