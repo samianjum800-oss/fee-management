@@ -102,7 +102,48 @@ Use this index to move from a behavior to its implementation owner. The route ca
 
 ## Migrations
 
-`axis_saas/migrations/0001_initial.py` through `0036_class_timetable_assignment_multi.py` define and evolve schema. In order, the sequence covers initial tenant/fee structures, schema repair, biometric credentials, tenant types, wing/class structure, dropped legacy student field, academic calendar/timetable, day schedules/breaks/labels and uniqueness hardening, persisted timetable and teacher assignments, staff leave/suspensions, substitute assignments, biometric switch, leave hardening, period teacher audit, production attendance, attendance source values, class-teacher attendance permissions, audit indexes and multiple timetable assignments. There are migration files for every numbered migration from `0001` to `0036`; inspect exact dependencies/data operations before changing one. `migrations/__init__.py` is the package marker.
+The migration package contains the following numbered files; read their dependencies and operations before editing schema history.
+
+| Migration file | Change area (from filename and migration history) |
+|---|---|
+| `0001_initial.py` | Initial AXIS schema. |
+| `0002_repair_missing_schema.py` | Repair initial missing schema state. |
+| `0003_staffbiometriccredential.py` | Staff biometric credential registry model. |
+| `0004_alter_schoolclient_tenant_type.py` | Tenant type field/choice evolution. |
+| `0005_alter_schoolclient_tenant_type.py` | Follow-up tenant type migration. |
+| `0006_alter_schoolclient_tenant_type.py` | Follow-up tenant type migration. |
+| `0007_wingcategory_alter_schoolclass_unique_together_and_more.py` | Wing hierarchy and class uniqueness changes. |
+| `0008_drop_staff_father_name.py` | Remove legacy staff field. |
+| `0009_academiccalendar_holiday_period_timetableentry.py` | Calendar, holiday, period and timetable-entry models. |
+| `0010_dayschedule.py` | Day schedule model. |
+| `0011_alter_dayschedule_add_order_label.py` | Day-schedule ordering and label fields. |
+| `0012_alter_dayschedule_label_not_null.py` | Make day-schedule label required. |
+| `0013_vacation_weeklyholiday_alter_dayschedule_options_and_more.py` | Vacation/weekly holiday and schedule options. |
+| `0014_add_break_fields_to_dayschedule.py` | Schedule break fields. |
+| `0015_schedulelabel.py` | Reusable schedule label model. |
+| `0016_dayschedule_unique_label_per_day.py` | Unique label/calendar/day schedule rule. |
+| `0017_periods_timetable.py` | Persisted periods timetable. |
+| `0018_period_teacher_assignment.py` | Per-period teacher assignments. |
+| `0019_dayschedule_ci_label_unique.py` | Case-insensitive schedule label uniqueness. |
+| `0020_dayschedule_optimistic_lock.py` | Day-schedule concurrency/version field. |
+| `0021_schedulelabel_fk_step1.py` | Schedule label foreign-key conversion step 1. |
+| `0022_schedulelabel_fk_step2.py` | Schedule label foreign-key conversion step 2. |
+| `0023_schedulelabel_fk_step3.py` | Schedule label foreign-key conversion step 3. |
+| `0024_leave_management.py` | Staff leave management models. |
+| `0025_rename_axis_saas_l_staff_i_2e5d1b_idx_axis_saas_l_staff_i_b29c3c_idx_and_more.py` | Index name changes. |
+| `0026_leave_suspensions.py` | Staff leave suspension model. |
+| `0027_substitute_assignment.py` | Substitute/fixture assignment model. |
+| `0028_staff_biometric_login_enabled.py` | Per-staff biometric login switch. |
+| `0029_rename_axis_saas_l_staff_i_act_idx_axis_saas_l_staff_i_7f7c6d_idx.py` | Leave index rename. |
+| `0030_leave_hardening_v3.py` | Leave policy hardening. |
+| `0031_period_teacher_assignment_audit.py` | Assignment audit fields. |
+| `0032_attendance_production_v2.py` | Production attendance schema. |
+| `0033_attendance_auto_system_source.py` | Automatic attendance source option. |
+| `0034_class_teacher_attendance_permissions.py` | Class-teacher permissions and edit quota. |
+| `0035_rename_axis_saas_attaudit_ca_idx_axis_saas_a_changed_c271c5_idx_and_more.py` | Attendance audit index rename. |
+| `0036_class_timetable_assignment_multi.py` | Multiple timetable assignments per class. |
+
+`migrations/__init__.py` is the package marker. Descriptions are signposts only; migration operations are authoritative.
 
 ## Management commands
 
@@ -140,26 +181,20 @@ Tests use Django's test framework. Existing modules:
 
 ## Templates
 
-Templates use the matching view contexts and named route contracts. Files are grouped by audience; most features have distinct desktop/mobile template files. Shared tenant components include base layouts, voucher rows/modals, fee collection fragments, and notification controls.
+Templates use view contexts and named URL contracts. The following are the active `.html` template paths in the tracked tree; files with backup suffixes are listed separately and are not selected by the normal template names.
 
-- `templates/tenant/`: `base.html`, `login.html`, `dashboard.html`, `student_list.html`, `student_form.html`, `student_profile.html`, `fee_collection.html`, `collect_fee.html`, `make_payment.html`, `fee_receipt.html`, `receipt.html`, `payment_history.html`, `fee_structure.html`, `fee_settings.html`, `fee_generate.html`, `family_payment.html`, `pending_fees.html`, `defaulters.html`, `reports.html`, `settings.html`, `wing_school_settings.html`, `attendence.html`, `leave_management.html`, `staff_list.html`, `staff_form.html`, `staff_profile.html`, `teachers_management.html`, `class_management.html`, `single_classes.html`, `single_class_detailed.html`, `wing_classes.html`, `wing_class_detailed.html`, `wing_school_class_management.html`, `timetable_management.html`, `timetable_periods.html`, `timetable_assignments.html`, `timetable_assign_teachers.html`, `stock_management.html`, `product_detail.html`, `sell_items.html`, `sell_separately.html`, `vouchers.html`, `voucher_modal.html`, `voucher_snippet.html`, `_voucher_row.html`, `fee_logs.html`, `global_search.html`, `messages.html`, `notification_bell.html`, `students_by_teacher.html`.
-- `templates/mobile/`: mobile counterparts for dashboard, students, fees/receipts, settings, reports, stock, staff/class management and vouchers; also `more.html`, `notification_banner.html`, `notification_bell.html`, `_voucher_card.html`.
-- `templates/staff/`: `base.html`, `login.html`, `dashboard.html`, `classes.html`, `class_students.html`, `student_profile.html`, `attendance.html`, `attendance_mark.html`, `profile.html`, `notifications.html`, `403.html`.
-- `templates/mobile/staff/`: mobile staff dashboard/classes/student profile/attendance/leave/profile/notifications/login/biometric setup/more/base/403 templates.
-- `templates/admin/password_reset_action.html`: custom Django admin action page.
+- `templates/tenant/`: `_voucher_row.html`, `attendence.html`, `base.html`, `class_management.html`, `collect_fee.html`, `dashboard.html`, `defaulters.html`, `family_payment.html`, `fee_collection.html`, `fee_generate.html`, `fee_logs.html`, `fee_receipt.html`, `fee_settings.html`, `fee_structure.html`, `global_search.html`, `leave_management.html`, `login.html`, `make_payment.html`, `messages.html`, `notification_bell.html`, `payment_history.html`, `pending_fees.html`, `product_detail.html`, `receipt.html`, `reports.html`, `sell_items.html`, `sell_separately.html`, `settings.html`, `single_class_detailed.html`, `single_classes.html`, `staff_form.html`, `staff_list.html`, `staff_profile.html`, `stock_management.html`, `student_form.html`, `student_list.html`, `student_profile.html`, `students_by_teacher.html`, `teachers_management.html`, `timetable_assign_teachers.html`, `timetable_assignments.html`, `timetable_management.html`, `timetable_periods.html`, `voucher_modal.html`, `voucher_snippet.html`, `vouchers.html`, `wing_class_detailed.html`, `wing_classes.html`, `wing_school_class_management.html`, `wing_school_settings.html`, `wing_school_student_form.html`.
+- `templates/mobile/`: `_voucher_card.html`, `base.html`, `class_management.html`, `collect_fee.html`, `dashboard.html`, `defaulters.html`, `fee_collection.html`, `fee_logs.html`, `fee_settings.html`, `fee_structure.html`, `more.html`, `notification_banner.html`, `notification_bell.html`, `product_detail.html`, `receipt.html`, `reports.html`, `sell_separately.html`, `settings.html`, `staff_form.html`, `staff_list.html`, `staff_profile.html`, `stock_management.html`, `student_form.html`, `student_list.html`, `student_profile.html`, `vouchers.html`, `wing_school_class_management.html`, `wing_school_settings.html`, `wing_school_student_form.html`.
+- `templates/staff/`: `403.html`, `attendance.html`, `attendance_mark.html`, `base.html`, `class_students.html`, `classes.html`, `dashboard.html`, `login.html`, `notifications.html`, `profile.html`, `student_profile.html`.
+- `templates/mobile/staff/`: `403.html`, `attendence.html`, `base.html`, `biometric_setup.html`, `classes.html`, `dashboard.html`, `leave_management.html`, `login.html`, `more.html`, `notifications.html`, `profile.html`, `student_profile.html`.
+- `templates/admin/`: `password_reset_action.html`.
 
-The `templates/tenant/` and `templates/mobile/` trees also contain `.bak*` / `.backup*` snapshots, including alternative base, reports and timetable templates. Django template loaders target the `.html` names, not these backup suffixes.
+Tracked tenant template backups: `templates/tenant/base.html.backup_final`, `base.html.backup_final2`, `base.html.backup_professional`, `base.html.bak`, `base.html.bak_final`, `base.html.bak_final_ui`, `base.html.bak_scroll`, `base.html.bak_ui`, `reports.html.bak_reports`, `timetable_management.html.bak`, `timetable_management.html.bak2`, `timetable_management.html.bak3`, `timetable_management.html.bak_dupmsg`, `timetable_management.html.bak_final`, `timetable_management.html.bak_labels`, `timetable_management.html.bak_v2`. Django template loaders target the active `.html` names, not these backup suffixes.
 
 ## Static files and scripts
 
-- Root `static/js/school_client_features.js`: school-admin feature presentation behavior.
-- Root `static/js/staff_biometric.js`: browser WebAuthn client flow.
-- Root `static/sw.js`: checked-in admin/root service-worker source, served dynamically by `pwa_views.py` (review both before changing behavior).
-- Root `static/pwa/`: admin/staff PWA icons in PNG/SVG formats; `static/icons/` includes general app icons.
-- `axis_saas/static/js/offline_student.js`: offline student form queue/sync logic.
-- `axis_saas/static/pwa/`: additional admin PWA PNG icons.
-- `scripts/attendance_auto_present.sh`: invokes scheduled attendance command.
-- `scripts/install_attendance_cron.sh`: dry-run/install cron helper.
-- `scripts/run_attendance_tests.sh`: focused attendance test runner.
+- Root `static/`: `icons/icon-192x192.png`, `icons/icon-512x512.png`, `js/school_client_features.js`, `js/staff_biometric.js`, `pwa/icon-192x192.png`, `pwa/icon-512x512.png`, `pwa/staff-icon-180.png`, `pwa/staff-icon-192.png`, `pwa/staff-icon-192.svg`, `pwa/staff-icon-512.png`, `pwa/staff-icon-512.svg`, `sw.js`. `static/sw.js` is checked-in admin/root service-worker source served dynamically by `pwa_views.py`; review both before changing behavior.
+- `axis_saas/static/`: `js/offline_student.js`, `pwa/icon-192x192.png`, `pwa/icon-512x512.png`.
+- `scripts/`: `attendance_auto_present.sh` (scheduled attendance command), `install_attendance_cron.sh` (cron dry-run/install helper), `run_attendance_tests.sh` (focused attendance test runner).
 
 `staticfiles/` is generated output from `collectstatic`, including Django admin and hashed assets; it is not hand-maintained application source. `media/` and `student_photos/` hold uploads/runtime content.
