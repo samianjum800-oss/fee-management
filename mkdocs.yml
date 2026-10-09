@@ -1,0 +1,60 @@
+site_name: AXIS Help Center
+site_description: User guides for the AXIS school management portal
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Mobile and Installed Apps: mobile-app.md
+  - School Administration:
+      - Dashboard: dashboard.md
+      - School Settings: school-settings.md
+      - Students: students.md
+      - Fees, Payments and Vouchers: fees.md
+      - Reports and Defaulters: reports.md
+      - Classes and Staff: classes-and-staff.md
+      - Timetable and Periods: timetable.md
+      - Attendance: attendance.md
+      - Staff Leave: leave.md
+      - Inventory and Sales: inventory.md
+      - Notifications: notifications.md
+  - Staff:
+      - Staff Portal and Sign-in: staff-portal.md
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
