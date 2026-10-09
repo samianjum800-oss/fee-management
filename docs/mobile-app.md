@@ -50,26 +50,25 @@ See [Staff portal, credentials, and AXIS on your device](staff-portal.md) for pa
 
 ## Install the AXIS Help Center
 
-The Help Center has its own small, read-only app at `/help/`. It is separate from the school administrator portal and AXIS Staff.
+The Help Center is a public, read-only app at `/help/`, separate from the school administrator portal and AXIS Staff.
 
 1. Open your school's AXIS website over HTTPS and visit `/help/`.
-2. In Chrome or Edge, choose **Install app** from the browser prompt or menu. On iPhone/iPad Safari, choose **Share** → **Add to Home Screen**. In Firefox, use **Install** or **Add to Home screen** if offered.
-3. Keep the device online while the first page loads so the Help Center can cache its manuals and local assets.
-4. Open **AXIS Help** from the home screen. To refresh guides after an update, connect to the internet and open the Help Center online once.
+2. Tap the floating **Install AXIS Help** button. If a native browser prompt appears, accept it; if not, the button displays manual steps.
+3. On iPhone/iPad Safari, use **Share** → **Add to Home Screen**. In Chrome/Edge, use **Install app** or **Add to Home screen**. In Firefox, use its install option if offered.
+4. Open **AXIS Help** from the home screen. The floating button hides when the page is running as an installed app.
 
 The Help Center's service worker is limited to `/help/` and caches only help-site pages and local assets. It does not cache school sessions, fees, student data, staff profiles, or attendance records.
 
-## Install the AXIS Help Center
+## Prepare AXIS Help for offline reading
 
-The Help Center is a public, read-only guide site and has its own installable app. It is separate from both school accounts and the staff portal.
+Open the Help Center online once after installing so the worker can cache the generated manuals and their local assets. Browsers do not allow a site to silently display the native install prompt; the floating button opens it after a user tap.
 
-1. While online, open your AXIS site and go to `/help/`.
-2. Use your browser's **Install app** or **Add to Home Screen** action.
-3. Open **AXIS Help** from the home screen or app list.
-4. Keep the device online during the first visit so AXIS can cache the manuals and their images, styles, and scripts.
-5. After the first cache completes, open the installed Help Center once while offline to confirm the guides are available.
+1. While online, open `/help/` and navigate through the guides you need.
+2. Let the pages finish loading while the service worker installs and stores the site's cache list.
+3. Open AXIS Help once with the network turned off to check that the guides you need are available.
+4. Reconnect and open the Help Center online after an update to refresh cached content.
 
-The Help Center caches its generated manuals for offline reading. It does not cache school records, sign-in pages, payment actions, or staff data.
+The offline cache includes the generated Help Center pages and local assets. It does not include AXIS school records, sign-in pages, payment actions, or staff data.
 
 !!! warning "Keep the two portals separate"
     The school administrator app and AXIS Staff are different sign-in experiences. Do not share an administrator account with staff. Sign out of a shared device after use.
