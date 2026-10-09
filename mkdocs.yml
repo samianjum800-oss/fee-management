@@ -25,6 +25,7 @@ nav:
 theme:
   name: material
   language: en
+  custom_dir: docs/overrides
   font:
     text: Manrope
     code: Roboto Mono

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  <link rel="manifest" href="/help/manifest.webmanifest">
+  <meta name="theme-color" content="#173b5e">
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="/help/assets/axis-help.js" defer></script>
+{% endblock %}

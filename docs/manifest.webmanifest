@@ -1,0 +1,26 @@
+{
+  "id": "/help/",
+  "name": "AXIS Help Center",
+  "short_name": "AXIS Help",
+  "description": "School administrator, teacher, and staff guides for AXIS.",
+  "start_url": "/help/",
+  "scope": "/help/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f8fb",
+  "theme_color": "#173b5e",
+  "icons": [
+    {
+      "src": "/help/assets/axis-help-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/help/assets/axis-help-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

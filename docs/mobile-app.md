@@ -48,11 +48,35 @@ Staff installation uses a different app and a different service worker from the 
 
 See [Staff portal, credentials, and AXIS on your device](staff-portal.md) for passkeys, account setup, and lost-device guidance.
 
+## Install the AXIS Help Center
+
+The Help Center has its own small, read-only app at `/help/`. It is separate from the school administrator portal and AXIS Staff.
+
+1. Open your school's AXIS website over HTTPS and visit `/help/`.
+2. In Chrome or Edge, choose **Install app** from the browser prompt or menu. On iPhone/iPad Safari, choose **Share** → **Add to Home Screen**. In Firefox, use **Install** or **Add to Home screen** if offered.
+3. Keep the device online while the first page loads so the Help Center can cache its manuals and local assets.
+4. Open **AXIS Help** from the home screen. To refresh guides after an update, connect to the internet and open the Help Center online once.
+
+The Help Center's service worker is limited to `/help/` and caches only help-site pages and local assets. It does not cache school sessions, fees, student data, staff profiles, or attendance records.
+
+## Install the AXIS Help Center
+
+The Help Center is a public, read-only guide site and has its own installable app. It is separate from both school accounts and the staff portal.
+
+1. While online, open your AXIS site and go to `/help/`.
+2. Use your browser's **Install app** or **Add to Home Screen** action.
+3. Open **AXIS Help** from the home screen or app list.
+4. Keep the device online during the first visit so AXIS can cache the manuals and their images, styles, and scripts.
+5. After the first cache completes, open the installed Help Center once while offline to confirm the guides are available.
+
+The Help Center caches its generated manuals for offline reading. It does not cache school records, sign-in pages, payment actions, or staff data.
+
 !!! warning "Keep the two portals separate"
     The school administrator app and AXIS Staff are different sign-in experiences. Do not share an administrator account with staff. Sign out of a shared device after use.
 
 ## What works offline
 
+- The Help Center can display its cached manuals offline after a successful online visit and cache setup.
 - The staff app provides a cached offline fallback page, but it does not cache staff records or authenticated actions.
 - The school portal may reuse some previously opened pages, but editing student records, saving payments, changing attendance, and other updates require a working connection.
 - Student entries can be queued for synchronization in supported browsers. Keep the same browser/device available and verify that the entry appears in AXIS before relying on it.
@@ -80,6 +104,9 @@ Installation depends on a supported browser, a secure HTTPS website, and the sit
 
 ### Can I use the administrator app for teacher work?
 The administrator and staff portals have separate accounts and navigation. Use the portal assigned to your role.
+
+### Can I read Help Center guides without internet?
+Yes, after opening `/help/` online so the manual pages and assets are cached. Reconnect and open the Help Center online to receive updated manuals.
 
 ## Troubleshooting
 
