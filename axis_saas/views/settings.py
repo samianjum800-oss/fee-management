@@ -76,6 +76,10 @@ def settings(request, schema_name):
                             messages.success(request, 'Campus / wing category added successfully.')
                     except IntegrityError:
                         messages.error(request, 'A category with this name already exists under the selected main category.')
+            if request.POST.get('return_to') == 'classes_management':
+                return redirect(
+                    f'/portal/{schema_name}/my-classes/?open_campus_management=1'
+                )
             return redirect('settings', schema_name=schema_name)
         school_name = request.POST.get('school_name', '').strip()
         if school_name:

@@ -30,6 +30,7 @@ from ..models import ManualGenerationLog
 from ..models import SchoolClass, WingCategory  # added by patcher
 
 from .helpers import *
+from ..utils.display_grade import get_fee_structure_grade
 
 @require_tenant_type(['school'])
 @require_school_feature('fee_structure')
@@ -48,28 +49,21 @@ def fee_structure(request, schema_name):
             monthly_fee = request.POST.get('monthly_fee')
             if class_id and monthly_fee:
                 try:
-                    school_class = SchoolClass.objects.get(id=class_id)
-                    # Build grade string based on tenant type
-                    if tenant.tenant_type == 'wing_school' and school_class.wing_category:
-                        main = school_class.wing_category.parent
-                        sub = school_class.wing_category
-                        if school_class.section:
-                            grade = f"{main.name} ({sub.name}) - {school_class.name} - {school_class.section}"
-                        else:
-                            grade = f"{main.name} ({sub.name}) - {school_class.name}"
-                    else:
-                        if school_class.section:
-                            grade = f"{school_class.name} - {school_class.section}"
-                        else:
-                            grade = school_class.name
-
-                    obj, created = FeeStructure.objects.update_or_create(grade=grade, defaults={'monthly_fee': monthly_fee})
+                    school_class = SchoolClass.objects.get(id=class_id, is_active=True)
+                    grade = get_fee_structure_grade(school_class, tenant.tenant_type)
+                    FeeStructure.objects.update_or_create(
+                        grade=grade,
+                        defaults={'monthly_fee': monthly_fee},
+                    )
                     Student.objects.filter(grade=grade).update(custom_fee=monthly_fee)
                     messages.success(request, f'Fee structure for {grade} saved successfully.')
                 except SchoolClass.DoesNotExist:
                     messages.error(request, 'Invalid class selected.')
             else:
                 messages.error(request, 'Please select a class and enter a monthly fee.')
+            if request.POST.get('return_to') == 'classes_management':
+                query = f'?open_fee_structure=1&edit_fee={class_id}' if class_id else '?open_fee_structure=1'
+                return redirect(f'/portal/{schema_name}/my-classes/{query}')
             return redirect('fee_structure', schema_name=schema_name)
 
         # Get existing fee structures
@@ -89,24 +83,13 @@ def fee_structure(request, schema_name):
         if edit_param:
             if edit_param.isdigit():
                 try:
-                    selected_class = SchoolClass.objects.get(id=edit_param)
+                    selected_class = SchoolClass.objects.get(id=edit_param, is_active=True)
                     edit_class_id = edit_param
                 except SchoolClass.DoesNotExist:
                     pass
             else:
                 for cls in classes:
-                    if tenant.tenant_type == 'wing_school' and cls.wing_category:
-                        main = cls.wing_category.parent
-                        sub = cls.wing_category
-                        if cls.section:
-                            grade_str = f"{main.name} ({sub.name}) - {cls.name} - {cls.section}"
-                        else:
-                            grade_str = f"{main.name} ({sub.name}) - {cls.name}"
-                    else:
-                        if cls.section:
-                            grade_str = f"{cls.name} - {cls.section}"
-                        else:
-                            grade_str = cls.name
+                    grade_str = get_fee_structure_grade(cls, tenant.tenant_type)
                     if grade_str == edit_param:
                         selected_class = cls
                         edit_class_id = cls.id
@@ -114,18 +97,7 @@ def fee_structure(request, schema_name):
 
         form = FeeStructureForm()
         if selected_class:
-            if tenant.tenant_type == 'wing_school' and selected_class.wing_category:
-                main = selected_class.wing_category.parent
-                sub = selected_class.wing_category
-                if selected_class.section:
-                    grade_str = f"{main.name} ({sub.name}) - {selected_class.name} - {selected_class.section}"
-                else:
-                    grade_str = f"{main.name} ({sub.name}) - {selected_class.name}"
-            else:
-                if selected_class.section:
-                    grade_str = f"{selected_class.name} - {selected_class.section}"
-                else:
-                    grade_str = selected_class.name
+            grade_str = get_fee_structure_grade(selected_class, tenant.tenant_type)
             try:
                 fee_obj = FeeStructure.objects.get(grade=grade_str)
                 form = FeeStructureForm(initial={'grade': grade_str, 'monthly_fee': fee_obj.monthly_fee})
@@ -134,18 +106,7 @@ def fee_structure(request, schema_name):
 
         grade_to_class_id = {}
         for cls in classes:
-            if tenant.tenant_type == 'wing_school' and cls.wing_category:
-                main = cls.wing_category.parent
-                sub = cls.wing_category
-                if cls.section:
-                    grade_str = f"{main.name} ({sub.name}) - {cls.name} - {cls.section}"
-                else:
-                    grade_str = f"{main.name} ({sub.name}) - {cls.name}"
-            else:
-                if cls.section:
-                    grade_str = f"{cls.name} - {cls.section}"
-                else:
-                    grade_str = cls.name
+            grade_str = get_fee_structure_grade(cls, tenant.tenant_type)
             grade_to_class_id[grade_str] = cls.id
 
         context = {

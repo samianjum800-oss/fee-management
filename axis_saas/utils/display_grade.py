@@ -14,6 +14,23 @@ page.
 from django.apps import apps  # noqa: F401  (kept for backward compatibility)
 
 
+def get_fee_structure_grade(school_class, tenant_type):
+    """Return the grade key used by FeeStructure for a school class."""
+    wing_category = _safe_wing_category(school_class)
+    if tenant_type == 'wing_school' and wing_category is not None:
+        parent = _safe_parent(wing_category)
+        if parent:
+            prefix = f"{parent.name} ({wing_category.name})"
+        else:
+            prefix = wing_category.name
+        grade = f"{prefix} - {school_class.name}"
+    else:
+        grade = school_class.name
+    if school_class.section:
+        grade = f"{grade} - {school_class.section}"
+    return grade
+
+
 def _safe_wing_category(school_class):
     """Return ``school_class.wing_category`` or None if the FK is orphaned."""
     if school_class is None:

@@ -12,11 +12,12 @@ from django.shortcuts import render
 from django.db.models import Count, Q
 from django_tenants.utils import schema_context
 
-from ..models import SchoolClass, Student
+from ..models import FeeStructure, SchoolClass, Student
 from .helpers import (
     get_tenant, require_tenant_type, require_school_feature, is_mobile_user_agent,
 )
 from axis_saas.utils.class_display import get_class_display_name
+from axis_saas.utils.display_grade import get_fee_structure_grade
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def _build_context(request, schema_name, tenant):
         classes = list(qs)
         for cls in classes:
             cls.display_name = get_class_display_name(cls, tenant.tenant_type)
+            cls.fee_grade = get_fee_structure_grade(cls, tenant.tenant_type)
 
         sections = list(
             SchoolClass.objects.filter(is_active=True)
@@ -48,6 +50,14 @@ def _build_context(request, schema_name, tenant):
 
         total_classes = len(classes)
         total_students = Student.objects.filter(status='active').count()
+        fee_map = {
+            fee.grade: fee
+            for fee in FeeStructure.objects.filter(
+                grade__in=[cls.fee_grade for cls in classes]
+            )
+        }
+        for cls in classes:
+            cls.fee_structure = fee_map.get(cls.fee_grade)
 
     return {
         'tenant': tenant,
@@ -58,6 +68,8 @@ def _build_context(request, schema_name, tenant):
         'total_classes': total_classes,
         'total_students': total_students,
         'logo_url': tenant.school_logo.url if tenant.school_logo else None,
+        'fee_structure_enabled': tenant.is_feature_enabled('fee_structure'),
+        'campus_management_enabled': tenant.tenant_type == 'wing_school',
     }
 
 
