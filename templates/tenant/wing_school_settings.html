@@ -114,6 +114,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('mainCategory').value = category ? category.main : '';
         document.getElementById('subCategory').value = category ? category.sub : '';
         submit.textContent = category ? 'Update Category' : 'Add Category';
+        if (category) window.axisCaptureConfirmOriginals(editor.querySelector('form'));
+        else delete editor.querySelector('form').dataset.confirmOriginals;
         name.focus();
     }
     addButton.addEventListener('click', function () { openEditor(null); });

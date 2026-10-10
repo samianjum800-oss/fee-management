@@ -27,7 +27,8 @@
     </h3>
     <form method="post" id="feeForm"
           data-confirm="{% if edit_class_id %}Update the monthly fee for this class?{% else %}Save this monthly fee structure?{% endif %}"
-          data-confirm-title="Confirm fee structure" data-confirm-label="Save fee">
+          data-confirm-title="Confirm fee structure" data-confirm-label="Save fee"
+          data-confirm-existing="{% if edit_class_id %}true{% else %}false{% endif %}">
         {% csrf_token %}
         <div class="field-card">
             <label>Class</label>

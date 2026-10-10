@@ -403,7 +403,8 @@
         </div>
         <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}" class="class-tools-form" id="campusEditForm"
               data-confirm="Save these campus and wing changes?"
-              data-confirm-title="Update campus" data-confirm-label="Save changes">
+              data-confirm-title="Update campus" data-confirm-label="Save changes"
+              data-confirm-existing="true">
             {% csrf_token %}
             <input type="hidden" name="return_to" value="classes_management">
             <input type="hidden" name="category_action" value="manage" id="campusEditAction">
@@ -529,6 +530,9 @@ document.addEventListener('DOMContentLoaded', function () {
             feeClass.value = button.dataset.classId;
             feeClassName.textContent = button.dataset.className;
             feeAmount.value = button.dataset.monthlyFee || '';
+            const feeForm = feeAmount.form;
+            feeForm.dataset.confirmExisting = button.dataset.monthlyFee ? 'true' : 'false';
+            if (button.dataset.monthlyFee) window.axisCaptureConfirmOriginals(feeForm);
             document.getElementById('feeEditTitle').textContent =
                 button.dataset.monthlyFee ? 'Edit monthly fee' : 'Set monthly fee';
             document.getElementById('feeEditDescription').textContent = button.dataset.className;
@@ -611,6 +615,7 @@ document.addEventListener('DOMContentLoaded', function () {
             button.closest('.campus-category-item')
                 .querySelectorAll('[data-wing-id]')
                 .forEach((wing) => addWingRow(wing.dataset.wingId, wing.dataset.wingName));
+            window.axisCaptureConfirmOriginals(campusEditForm);
             show(campusEdit);
         });
     });

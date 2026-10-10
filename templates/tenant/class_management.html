@@ -848,6 +848,7 @@
             document.getElementById('className').value = d.name || '';
             document.getElementById('classSection').value = d.section || '';
             document.getElementById('classDesc').value = d.description || '';
+            window.axisCaptureConfirmOriginals(document.getElementById('classForm'));
             document.getElementById('classModalTitle').textContent = 'Edit Class';
             document.getElementById('classSubmitBtn').textContent = 'Update Class';
             document.getElementById('classForm').action = buildUrl(URLS.editClass, d.id);
@@ -862,6 +863,7 @@
             document.getElementById('subjectName').value = sd.name || '';
             document.getElementById('subjectCode').value = sd.code || '';
             document.getElementById('subjectDesc').value = sd.description || '';
+            window.axisCaptureConfirmOriginals(document.getElementById('subjectForm'));
             document.getElementById('subjectModalTitle').textContent = 'Edit Subject';
             document.getElementById('subjectSubmitBtn').textContent = 'Update Subject';
             document.getElementById('subjectForm').action = buildUrl(URLS.editSubject, sd.id);
@@ -877,6 +879,7 @@
             document.getElementById('assignSubject').value = ad.subjectId;
             document.getElementById('assignTeacher').value = ad.teacherId || '';
             document.getElementById('assignYear').value = ad.year || '';
+            window.axisCaptureConfirmOriginals(document.getElementById('assignForm'));
             document.getElementById('assignModalTitle').textContent = 'Edit Assignment';
             document.getElementById('assignSubmitBtn').textContent = 'Update Assignment';
             document.getElementById('assignForm').action = buildUrl(URLS.editAssignment, ad.id);

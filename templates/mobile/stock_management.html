@@ -755,6 +755,7 @@
       productNotes.value = notes || '';
       productSubmitBtn.textContent = 'Update Product';
       productForm.action = "{% url 'add_product' schema_name=tenant.schema_name %}";
+      window.axisCaptureConfirmOriginals(productForm);
       productSheet.classList.add('open');
       productOverlay.classList.add('active');
     };
@@ -811,6 +812,7 @@
         document.getElementById('editCatId').value = id;
         document.getElementById('newCatName').value = name;
         document.getElementById('addCatBtn').textContent = 'Update';
+        window.axisCaptureConfirmOriginals(document.getElementById('addCategoryForm'));
       });
     });
 

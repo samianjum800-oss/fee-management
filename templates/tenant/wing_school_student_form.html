@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', function () {
 <div class="form-card">
     <form method="post" id="studentForm"
           data-confirm="{% if student %}Save these changes to the student profile?{% else %}Create this student profile?{% endif %}"
-          data-confirm-title="{% if student %}Update student{% else %}Add student{% endif %}" data-confirm-label="{% if student %}Save changes{% else %}Create student{% endif %}">
+          data-confirm-title="{% if student %}Update student{% else %}Add student{% endif %}" data-confirm-label="{% if student %}Save changes{% else %}Create student{% endif %}"
+          data-confirm-existing="{% if student %}true{% else %}false{% endif %}">
         {% csrf_token %}
         <div class="form-grid">
             {% for field in form %}

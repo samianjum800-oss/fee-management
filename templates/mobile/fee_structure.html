@@ -364,7 +364,8 @@
   </div>
   <form method="post" id="feeForm"
         data-confirm="Save this monthly fee structure?"
-        data-confirm-title="Confirm fee structure" data-confirm-label="Save fee">
+        data-confirm-title="Confirm fee structure" data-confirm-label="Save fee"
+        data-confirm-existing="{% if edit_class_id %}true{% else %}false{% endif %}">
     {% csrf_token %}
     <div class="field-group">
       <label>Class</label>

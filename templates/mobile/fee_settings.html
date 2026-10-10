@@ -947,6 +947,13 @@
     const cancelBtn = document.getElementById('cancelEditBtn');
     const saveBtn = document.getElementById('saveSettingsBtn');
     const settingsGrid = document.getElementById('settingsGrid');
+    const originalExtraCharges = Array.from(
+        document.querySelectorAll('.charge-edit-row')
+    ).map(row => {
+        const title = row.querySelector('.edit-charge-title')?.defaultValue?.trim() || 'Unnamed';
+        const amount = Number(row.querySelector('.edit-charge-amount')?.defaultValue || 0);
+        return title + ' (₹' + amount.toFixed(2) + ')';
+    }).join('; ') || 'None';
     let editModeActive = false;
 
     toggleEditBtn.addEventListener('click', function() {
@@ -968,17 +975,41 @@
     });
 
     saveBtn.addEventListener('click', async function() {
+        function changedSetting(label, original, current) {
+            original = String(original || '').trim();
+            current = String(current || '').trim();
+            return original === current ? null : {
+                label: label,
+                previous: original || 'Not set',
+                current: current || 'Not set'
+            };
+        }
+        const currentCharges = Array.from(
+            document.querySelectorAll('.charge-edit-row')
+        ).map(row => {
+            const title = row.querySelector('.edit-charge-title')?.value?.trim() || 'Unnamed';
+            const amount = Number(row.querySelector('.edit-charge-amount')?.value || 0);
+            return title + ' (₹' + amount.toFixed(2) + ')';
+        }).join('; ') || 'None';
+        const settingsChanges = [
+            changedSetting('Generation day',
+                document.querySelector('input[name="fee_generation_day"]')?.defaultValue,
+                document.querySelector('input[name="fee_generation_day"]')?.value),
+            changedSetting('Due date offset',
+                document.querySelector('input[name="due_date_offset"]')?.defaultValue,
+                document.querySelector('input[name="due_date_offset"]')?.value),
+            changedSetting('Late fee',
+                document.querySelector('input[name="late_fee_penalty"]')?.defaultValue,
+                document.querySelector('input[name="late_fee_penalty"]')?.value),
+            changedSetting('Extra charges', originalExtraCharges, currentCharges)
+        ].filter(Boolean);
         const confirmed = await window.axisConfirmAction(
-            'Save the fee generation schedule, late fee, and default extra charges?',
+            'Review the differences before saving fee automation settings.',
             {
                 title: 'Save fee settings',
                 confirmLabel: 'Save settings',
-                details: [
-                    { label: 'Generation day', value: document.querySelector('input[name="fee_generation_day"]')?.value || 'Unchanged' },
-                    { label: 'Due date offset', value: document.querySelector('input[name="due_date_offset"]')?.value || 'Unchanged' },
-                    { label: 'Late fee', value: document.querySelector('input[name="late_fee_penalty"]')?.value || 'Unchanged' },
-                    { label: 'Extra charges', value: document.querySelectorAll('.charge-edit-row').length + ' configured' }
-                ]
+                existing: true,
+                details: settingsChanges
             }
         );
         if (!confirmed) return;

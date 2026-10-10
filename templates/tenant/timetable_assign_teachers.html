@@ -598,7 +598,8 @@ window.TT_URLS = {
                     // (red) when no subject-with-teacher is assigned.
                     var _isEmptyCell = !teacherForSel;
                     html += '<div class="assign-cell' + (_isEmptyCell ? ' has-empty' : '') + '">' +
-                        '<select class="cell-subject" data-day="' + dayNum + '" data-order="' + i + '">' +
+                        '<select class="cell-subject" data-day="' + dayNum + '" data-order="' + i +
+                            '" data-original-value="' + esc(selVal) + '">' +
                             opts +
                         '</select>' +
                         '<span class="teacher-hint' + (teacherForSel ? ' has-teacher' : '') + '">' +
@@ -806,13 +807,19 @@ window.TT_URLS = {
         window.axisConfirmAction('Save the teacher and period assignments for this class?', {
             title: 'Save timetable assignments',
             confirmLabel: 'Save assignments',
+            existing: true,
             details: CURRENT_SELECTS.filter(function (select) {
-                return select.value;
-            }).slice(0, 4).map(function (select) {
+                return select.value !== select.dataset.originalValue;
+            }).map(function (select) {
+                var originalOption = Array.prototype.find.call(select.options, function (option) {
+                    return option.value === select.dataset.originalValue;
+                });
                 return {
                     label: dayName(parseInt(select.getAttribute('data-day'), 10)) +
                         ' · Period ' + select.getAttribute('data-order'),
-                    value: select.options[select.selectedIndex].textContent.trim()
+                    previous: originalOption ? originalOption.textContent.trim() : 'Not assigned',
+                    current: select.value ?
+                        select.options[select.selectedIndex].textContent.trim() : 'Not assigned'
                 };
             })
         }).then(function (confirmed) {

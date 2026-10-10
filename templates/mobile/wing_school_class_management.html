@@ -467,6 +467,7 @@
         document.getElementById('classSection').value = section;
         document.getElementById('classDesc').value = desc;
         document.getElementById('id_wing_category').value = categoryId || '';
+        window.axisCaptureConfirmOriginals(document.getElementById('classForm'));
         document.getElementById('classModalTitle').innerText = 'Edit Class';
         document.getElementById('classSubmitBtn').innerText = 'Update Class';
         document.getElementById('classForm').action = "{% url 'edit_class' schema_name=tenant.schema_name class_id=0 %}".replace('0', id);
@@ -488,6 +489,7 @@
         document.getElementById('subjectName').value = name;
         document.getElementById('subjectCode').value = code;
         document.getElementById('subjectDesc').value = desc;
+        window.axisCaptureConfirmOriginals(document.getElementById('subjectForm'));
         document.getElementById('subjectModalTitle').innerText = 'Edit Subject';
         document.getElementById('subjectSubmitBtn').innerText = 'Update Subject';
         document.getElementById('subjectForm').action = "{% url 'edit_subject' schema_name=tenant.schema_name subject_id=0 %}".replace('0', id);
@@ -511,6 +513,7 @@
         if (teacherId) document.getElementById('assignTeacher').value = teacherId;
         else document.getElementById('assignTeacher').value = '';
         document.getElementById('assignYear').value = year;
+        window.axisCaptureConfirmOriginals(document.getElementById('assignForm'));
         document.getElementById('assignModalTitle').innerText = 'Edit Assignment';
         document.getElementById('assignSubmitBtn').innerText = 'Update Assignment';
         document.getElementById('assignForm').action = "{% url 'edit_assignment' schema_name=tenant.schema_name assignment_id=0 %}".replace('0', id);

@@ -111,6 +111,8 @@
 .axis-confirm-details {
     display: grid;
     gap: .45rem;
+    max-height: 13rem;
+    overflow: auto;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -126,13 +128,31 @@
 }
 
 .axis-confirm-details li strong {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-end;
+    overflow-wrap: anywhere;
     max-width: 65%;
-    overflow: hidden;
     color: var(--text, #172033);
     font-weight: 650;
     text-align: right;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+}
+
+.axis-confirm-details .axis-confirm-before {
+    color: var(--muted, #64748b);
+    font-weight: 500;
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--muted, #64748b) 60%, transparent);
+}
+
+.axis-confirm-details .axis-confirm-after {
+    color: var(--accent, #2563eb);
+    font-weight: 750;
+}
+
+.axis-confirm-dialog.is-danger .axis-confirm-details .axis-confirm-after {
+    color: var(--danger, #dc2626);
 }
 
 .axis-confirm-details .axis-confirm-more {

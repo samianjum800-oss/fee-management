@@ -48,10 +48,39 @@
         });
     }
 
+    function fieldValue(field, useDefault) {
+        if (field.tagName === 'SELECT') {
+            return Array.prototype.filter.call(field.options, function (option) {
+                return useDefault ? option.defaultSelected : option.selected;
+            }).filter(function (option) {
+                return option.value;
+            }).map(function (option) {
+                return option.textContent.trim();
+            }).join(', ');
+        }
+        if (field.type === 'checkbox' || field.type === 'radio') {
+            return (useDefault ? field.defaultChecked : field.checked) ?
+                (field.value || 'Selected') : 'Not selected';
+        }
+        return useDefault ? field.defaultValue : field.value;
+    }
+
+    function isExistingRecord(form) {
+        if (form.dataset.confirmExisting === 'true' || form.dataset.confirmMode === 'edit') return true;
+        if (form.dataset.confirmExisting === 'false' || form.dataset.confirmMode === 'create') return false;
+        if (/\/edit(?:\/|$)/i.test(form.action)) return true;
+        return Array.prototype.some.call(form.elements, function (field) {
+            return /^(class|subject|assignment|category|product|staff|student)_?id$/i.test(field.name) &&
+                field.type === 'hidden' && Boolean(field.value);
+        });
+    }
+
     function changedFieldDetails(form) {
         if (!form) return [];
         var fields = [];
-        var sensitive = /password|secret|token|csrf|cnic|phone|mobile|email|address/i;
+        var existing = isExistingRecord(form);
+        var originals = JSON.parse(form.dataset.confirmOriginals || '{}');
+        var sensitive = /password|secret|token|csrf/i;
 
         Array.prototype.forEach.call(form.elements, function (field) {
             if (!field.name || field.disabled || sensitive.test(field.name) ||
@@ -59,53 +88,72 @@
             if (field.type === 'radio' && !field.checked) return;
             if (field.type === 'checkbox' && !field.checked) return;
 
-            var value;
-            if (field.tagName === 'SELECT') {
-                value = Array.prototype.filter.call(field.options, function (option) {
-                    return option.selected && option.value;
-                }).map(function (option) {
-                    return option.textContent.trim();
-                }).join(', ');
-            } else {
-                value = (field.value || '').trim();
-                if (/^(textarea|text|number|date|time|url|tel)$/i.test(field.type) &&
-                    field.defaultValue === field.value) return;
-            }
-            if (!value) return;
+            var value = String(fieldValue(field, false) || '').trim();
+            var original = Object.prototype.hasOwnProperty.call(originals, field.name) ?
+                String(originals[field.name]) : String(fieldValue(field, true) || '').trim();
+            if (existing && value === original) return;
+            if (!existing && !value) return;
 
             var label = fieldLabel(field);
             if (!label) return;
-            fields.push({ label: label, value: value });
+            fields.push({
+                label: label,
+                value: existing ? (original || 'Not set') + '  →  ' + (value || 'Not set') : value,
+                previous: existing ? (original || 'Not set') : null,
+                current: value || 'Not set'
+            });
         });
         return fields;
     }
 
-    function setOverview(form, details) {
+    function setOverview(form, details, existingOverride) {
         var section = dialog.querySelector('.axis-confirm-overview');
         var list = dialog.querySelector('.axis-confirm-details');
         list.replaceChildren();
+        var existing = existingOverride === undefined ?
+            (form ? isExistingRecord(form) : false) : existingOverride;
         var overview = details || changedFieldDetails(form);
         if (!overview.length) {
+            var message = dialog.querySelector('.axis-confirm-message');
+            if (existing) {
+                message.textContent += ' No field changes were detected.';
+            }
             section.hidden = true;
             return;
         }
-        overview.slice(0, 4).forEach(function (item) {
+        overview.forEach(function (item) {
             var row = document.createElement('li');
             var label = document.createElement('span');
             var value = document.createElement('strong');
             label.textContent = item.label;
-            value.textContent = item.value;
+            if (item.previous !== null && item.previous !== undefined) {
+                var before = document.createElement('span');
+                before.className = 'axis-confirm-before';
+                before.textContent = item.previous || 'Not set';
+                var after = document.createElement('span');
+                after.className = 'axis-confirm-after';
+                after.textContent = item.current;
+                value.append(before, document.createTextNode(' → '), after);
+            } else {
+                value.textContent = item.value;
+            }
             row.append(label, value);
             list.appendChild(row);
         });
-        if (overview.length > 4) {
-            var more = document.createElement('li');
-            more.className = 'axis-confirm-more';
-            more.textContent = '+' + (overview.length - 4) + ' more field(s) included';
-            list.appendChild(more);
-        }
         section.hidden = false;
     }
+
+    window.axisCaptureConfirmOriginals = function (form) {
+        if (!(form instanceof HTMLFormElement)) return;
+        var originals = {};
+        Array.prototype.forEach.call(form.elements, function (field) {
+            if (field.name && field.type !== 'hidden' && field.type !== 'password' &&
+                field.type !== 'file' && field.type !== 'submit' && field.type !== 'button') {
+                originals[field.name] = String(fieldValue(field, false) || '');
+            }
+        });
+        form.dataset.confirmOriginals = JSON.stringify(originals);
+    };
 
     function confirmAction(message, options) {
         options = options || {};
@@ -113,7 +161,8 @@
 
         dialog.querySelector('#axisConfirmTitle').textContent = options.title || 'Please confirm';
         dialog.querySelector('.axis-confirm-message').textContent = message;
-        setOverview(options.form, options.details);
+        dialog.dataset.confirmExisting = options.form && isExistingRecord(options.form) ? 'true' : 'false';
+        setOverview(options.form, options.details, options.existing);
         var accept = dialog.querySelector('.axis-confirm-accept');
         accept.querySelector('span').textContent = options.confirmLabel || 'Continue';
         accept.classList.toggle('is-danger', Boolean(options.danger));

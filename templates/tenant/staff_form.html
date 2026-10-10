@@ -17,7 +17,8 @@
 <div class="form-card">
     <form method="post" enctype="multipart/form-data" id="staffForm"
           data-confirm="{% if staff %}Save these changes to the staff profile?{% else %}Create this staff profile?{% endif %}"
-          data-confirm-title="{% if staff %}Update staff{% else %}Add staff{% endif %}" data-confirm-label="{% if staff %}Save changes{% else %}Create staff{% endif %}">
+          data-confirm-title="{% if staff %}Update staff{% else %}Add staff{% endif %}" data-confirm-label="{% if staff %}Save changes{% else %}Create staff{% endif %}"
+          data-confirm-existing="{% if staff %}true{% else %}false{% endif %}">
         {% csrf_token %}
         <div class="form-grid">
             {% for field in form %}
