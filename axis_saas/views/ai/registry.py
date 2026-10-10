@@ -34,26 +34,18 @@ TOOL_DEFINITIONS = {
                 'filters': {
                     'type': 'array', 'maxItems': 8,
                     'items': {'type': 'object', 'properties': {
-                        'field': {'type': 'string', 'enum': sorted({
-                            field for dataset in DATASETS.values() for field in dataset['fields']
-                        })},
+                        'field': {'type': 'string', 'maxLength': 80},
                         'operator': {'type': 'string', 'enum': sorted(FILTER_OPERATORS)},
                         'value': {'type': 'string', 'maxLength': 120},
                     }, 'required': ['field', 'operator', 'value'], 'additionalProperties': False},
                 },
-                'metric': {'type': 'string', 'enum': sorted({
-                    field for dataset in DATASETS.values() for field in dataset['metrics']
-                })},
-                'group_by': {'type': 'string', 'enum': sorted({
-                    field for dataset in DATASETS.values() for field in dataset['fields']
-                })},
+                'metric': {'type': 'string', 'maxLength': 80},
+                'group_by': {'type': 'string', 'maxLength': 80},
                 'fields': {
                     'type': 'array', 'maxItems': 8,
-                    'items': {'type': 'string', 'enum': sorted({
-                        field for dataset in DATASETS.values() for field in dataset['fields']
-                    })},
+                    'items': {'type': 'string', 'maxLength': 80},
                 },
-                'limit': {'type': 'integer', 'minimum': 1, 'maximum': 25},
+                'limit': {'type': 'integer', 'minimum': 1, 'maximum': 10},
                 'offset': {'type': 'integer', 'minimum': 0, 'maximum': 1000000},
             }, 'required': ['dataset', 'operation'], 'additionalProperties': False,
         },
@@ -187,6 +179,8 @@ def enabled_tool_definitions(tenant, *, consent_confirmed=False):
         return []
     definitions = []
     for name, definition in TOOL_DEFINITIONS.items():
+        if name != 'query_school_data':
+            continue
         if name == 'query_school_data':
             if not tenant.is_feature_enabled('ai_assistant', 'desktop'):
                 continue
@@ -195,27 +189,16 @@ def enabled_tool_definitions(tenant, *, consent_confirmed=False):
                 continue
             scoped = deepcopy(definition)
             scoped['parameters']['properties']['dataset']['enum'] = available_datasets
-            allowed_fields = sorted({
-                field for dataset_name in available_datasets
-                for field in DATASETS[dataset_name]['fields']
-            })
-            allowed_metrics = sorted({
-                field for dataset_name in available_datasets
-                for field in DATASETS[dataset_name]['metrics']
-            })
-            scoped['parameters']['properties']['filters']['items']['properties']['field']['enum'] = allowed_fields
-            scoped['parameters']['properties']['group_by']['enum'] = allowed_fields
-            scoped['parameters']['properties']['fields']['items']['enum'] = allowed_fields
-            scoped['parameters']['properties']['metric']['enum'] = allowed_metrics
             description = []
             for dataset_name in available_datasets:
                 dataset = DATASETS[dataset_name]
-                description.append(
-                    f"{dataset_name} ({', '.join(dataset['fields'])}); "
-                    f"sum/average metrics: {', '.join(dataset['metrics']) or 'none'}"
-                    + (f"; {dataset['guidance']}" if dataset.get('guidance') else '')
-                )
-            scoped['description'] += ' Available datasets and safe fields: ' + '; '.join(description) + '.'
+                item = f"{dataset_name}[{','.join(dataset['fields'])}]"
+                if dataset['metrics']:
+                    item += f"Σ[{','.join(dataset['metrics'])}]"
+                if dataset.get('guidance'):
+                    item += f"!{dataset['guidance']}"
+                description.append(item)
+            scoped['description'] += ' Dataset catalog: ' + ';'.join(description)
             definitions.append({
                 'type': 'function',
                 'function': {

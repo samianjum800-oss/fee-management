@@ -652,7 +652,7 @@ def _execute_school_data_query(
 
     selected_fields = _validated_fields(dataset, fields, 'fields', required=True)
     try:
-        limit = max(1, min(int(limit), 25))
+        limit = max(1, min(int(limit), 10))
     except (TypeError, ValueError):
         limit = 20
     values = {name: F(dataset['fields'][name]) for name in selected_fields}
