@@ -1,54 +1,182 @@
 .axis-confirm-dialog {
-    width: min(28rem, calc(100vw - 2rem));
+    position: fixed !important;
+    inset: 0 !important;
+    margin: auto !important;
+    transform: none !important;
+    width: min(34rem, calc(100vw - 2rem));
     max-width: none;
+    max-height: min(90vh, 44rem);
     padding: 0;
-    border: 1px solid var(--border, #dbe2ea);
-    border-radius: 1rem;
+    overflow: auto;
+    border: 1px solid color-mix(in srgb, var(--border, #dbe2ea) 80%, transparent);
+    border-radius: 1.25rem;
     background: var(--surface, #fff);
     color: var(--text, #172033);
-    box-shadow: 0 24px 70px rgba(15, 23, 42, .3);
+    box-shadow: 0 30px 90px rgba(15, 23, 42, .32), 0 4px 16px rgba(15, 23, 42, .12);
+    animation: axisConfirmEnter .18s ease-out;
 }
 
 .axis-confirm-dialog::backdrop {
-    background: rgba(15, 23, 42, .56);
-    backdrop-filter: blur(3px);
+    background: rgba(15, 23, 42, .62);
+    backdrop-filter: blur(5px);
 }
 
 .axis-confirm-card {
     display: grid;
-    gap: .8rem;
-    padding: 1.35rem;
+    gap: 1rem;
+    padding: clamp(1.2rem, 4vw, 1.7rem);
 }
 
-.axis-confirm-card h2 {
+.axis-confirm-heading {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+}
+
+.axis-confirm-icon {
+    position: relative;
+    display: grid;
+    flex: 0 0 2.9rem;
+    width: 2.9rem;
+    height: 2.9rem;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--accent, #2563eb) 20%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface, #fff));
+}
+
+.axis-confirm-icon::before {
+    content: "i";
+    display: grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--accent, #2563eb);
+    color: #fff;
+    font: 750 .8rem/1 system-ui, sans-serif;
+}
+
+.axis-confirm-dialog.is-danger .axis-confirm-icon {
+    border-color: color-mix(in srgb, var(--danger, #dc2626) 24%, transparent);
+    background: color-mix(in srgb, var(--danger, #dc2626) 10%, var(--surface, #fff));
+}
+
+.axis-confirm-dialog.is-danger .axis-confirm-icon::before {
+    content: "!";
+    background: var(--danger, #dc2626);
+}
+
+.axis-confirm-eyebrow {
+    display: block;
+    margin-bottom: .2rem;
+    color: var(--muted, #64748b);
+    font-size: .64rem;
+    font-weight: 750;
+    letter-spacing: .1em;
+}
+
+.axis-confirm-heading h2 {
     margin: 0;
-    font-size: 1.1rem;
-    line-height: 1.35;
+    font-size: clamp(1.05rem, 3vw, 1.25rem);
+    line-height: 1.3;
 }
 
 .axis-confirm-message {
     margin: 0;
     color: var(--muted, #64748b);
-    line-height: 1.55;
+    font-size: .93rem;
+    line-height: 1.6;
+}
+
+.axis-confirm-overview {
+    padding: .9rem 1rem;
+    border: 1px solid var(--border, #dbe2ea);
+    border-radius: .9rem;
+    background: var(--surface-alt, #f8fafc);
+}
+
+.axis-confirm-overview[hidden] {
+    display: none !important;
+}
+
+.axis-confirm-overview h3 {
+    margin: 0 0 .6rem;
+    font-size: .76rem;
+    font-weight: 750;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.axis-confirm-details {
+    display: grid;
+    gap: .45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.axis-confirm-details li {
+    display: flex;
+    justify-content: space-between;
+    gap: .8rem;
+    color: var(--muted, #64748b);
+    font-size: .82rem;
+    line-height: 1.4;
+}
+
+.axis-confirm-details li strong {
+    max-width: 65%;
+    overflow: hidden;
+    color: var(--text, #172033);
+    font-weight: 650;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.axis-confirm-details .axis-confirm-more {
+    color: var(--muted, #64748b);
+    font-size: .76rem;
+    font-style: italic;
+}
+
+.axis-confirm-footnote {
+    margin: -.4rem 0 0;
+    color: var(--muted, #64748b);
+    font-size: .75rem;
 }
 
 .axis-confirm-actions {
     display: flex;
     justify-content: flex-end;
     gap: .65rem;
-    margin-top: .35rem;
+    margin-top: .1rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--border, #dbe2ea);
 }
 
 .axis-confirm-actions button {
-    min-height: 2.6rem;
-    padding: .55rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .7rem;
+    min-height: 2.75rem;
+    padding: .6rem 1rem;
     border: 1px solid var(--border, #dbe2ea);
-    border-radius: .65rem;
-    background: var(--surface-alt, #f1f5f9);
+    border-radius: .75rem;
+    background: var(--surface, #fff);
     color: var(--text, #172033);
     font: inherit;
+    font-size: .86rem;
     font-weight: 650;
     cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.axis-confirm-actions button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(15, 23, 42, .09);
 }
 
 .axis-confirm-actions .axis-confirm-accept {
@@ -65,4 +193,27 @@
 .axis-confirm-actions button:focus-visible {
     outline: 3px solid color-mix(in srgb, var(--accent, #2563eb) 40%, transparent);
     outline-offset: 2px;
+}
+
+@keyframes axisConfirmEnter {
+    from { opacity: 0; transform: translateY(8px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 480px) {
+    .axis-confirm-actions {
+        flex-direction: column-reverse;
+    }
+
+    .axis-confirm-actions button {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .axis-confirm-dialog,
+    .axis-confirm-actions button {
+        animation: none;
+        transition: none;
+    }
 }

@@ -805,7 +805,16 @@ window.TT_URLS = {
     if (saveBtn) saveBtn.addEventListener('click', function () {
         window.axisConfirmAction('Save the teacher and period assignments for this class?', {
             title: 'Save timetable assignments',
-            confirmLabel: 'Save assignments'
+            confirmLabel: 'Save assignments',
+            details: CURRENT_SELECTS.filter(function (select) {
+                return select.value;
+            }).slice(0, 4).map(function (select) {
+                return {
+                    label: dayName(parseInt(select.getAttribute('data-day'), 10)) +
+                        ' · Period ' + select.getAttribute('data-order'),
+                    value: select.options[select.selectedIndex].textContent.trim()
+                };
+            })
         }).then(function (confirmed) {
             if (confirmed) saveAssignments();
         });

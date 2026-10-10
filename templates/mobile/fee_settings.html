@@ -970,7 +970,16 @@
     saveBtn.addEventListener('click', async function() {
         const confirmed = await window.axisConfirmAction(
             'Save the fee generation schedule, late fee, and default extra charges?',
-            { title: 'Save fee settings', confirmLabel: 'Save settings' }
+            {
+                title: 'Save fee settings',
+                confirmLabel: 'Save settings',
+                details: [
+                    { label: 'Generation day', value: document.querySelector('input[name="fee_generation_day"]')?.value || 'Unchanged' },
+                    { label: 'Due date offset', value: document.querySelector('input[name="due_date_offset"]')?.value || 'Unchanged' },
+                    { label: 'Late fee', value: document.querySelector('input[name="late_fee_penalty"]')?.value || 'Unchanged' },
+                    { label: 'Extra charges', value: document.querySelectorAll('.charge-edit-row').length + ' configured' }
+                ]
+            }
         );
         if (!confirmed) return;
 
