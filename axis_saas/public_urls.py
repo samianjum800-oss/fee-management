@@ -56,7 +56,7 @@ from .views.students import students_by_teacher
 from .pwa_views import manifest, service_worker
 from .views import voucher_status_api, generate_voucher_api, voucher_html_api, global_search_api
 from .views import fee_logs, mobile_fee_logs, global_search_api
-from .views.reports import attedence_report
+from .views.attendance_report import attedence_report
 from .views.admin_attendence import (
     admin_attendance_view,
     admin_attendance_students_api,

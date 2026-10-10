@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django_tenants.utils import schema_context
 
-from ...models import (
+from ..models import (
     AttendanceAuditLog,
     SchoolClass,
     StaffAttendance,
@@ -20,7 +20,7 @@ from ...models import (
     StudentAttendance,
     WingCategory,
 )
-from ..helpers import get_tenant, require_school_feature, require_tenant_type
+from .helpers import get_tenant, require_school_feature, require_tenant_type
 
 
 ATTENDANCE_STATUSES = {value for value, _label in StudentAttendance.STATUS_CHOICES}
