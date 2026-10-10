@@ -1,6 +1,7 @@
 """Authenticated assistant endpoint for a single school tenant."""
 
 import json
+import logging
 import re
 
 from django.conf import settings
@@ -30,18 +31,20 @@ from .tools import (
     student_fee_balance,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _rate_limited(request, schema_name):
     session_key = request.session.session_key or 'no-session'
     key = f'ai_assistant_rate:{schema_name}:{session_key}'
     try:
-        count = cache.get(key, 0)
-        if count >= 30:
-            return True
-        cache.set(key, count + 1, timeout=60)
-    except Exception:
-        return False
-    return False
+        if cache.add(key, 1, timeout=60):
+            return False
+        return cache.incr(key) > 30
+    except Exception as exc:
+        # Do not make an external-model endpoint unmetered during cache outages.
+        logger.warning('AI assistant rate-limit cache failed: %s', type(exc).__name__)
+        return True
 
 
 def _current_page(path, pages):
@@ -201,7 +204,23 @@ def assistant_api(request, schema_name):
             'reply': turn.get('reply') or '',
             'actions': turn.get('actions', []),
             'tools_used': turn.get('tools_used', []),
+            'provider_status': turn.get('provider_status', 'ready'),
         })
+
+    if turn.get('provider_status') == 'unavailable':
+        reply = (
+            'AI provider is temporarily unavailable. Please try again shortly.'
+            if not roman_urdu else
+            'AI provider filhal available nahin. Thori dair baad dobara koshish karein.'
+        )
+        return JsonResponse({
+            'kind': 'help',
+            'reply': reply,
+            'actions': [],
+            'provider_configured': True,
+            'provider_status': 'unavailable',
+            'available_tools': len(enabled_tool_definitions(tenant)),
+        }, status=503)
 
     if roman_urdu:
         reply = 'Is sawal ke liye general AI provider configure nahin hai. Main students dhoond sakta hoon ya enabled admin pages kholne ke links de sakta hoon.'
@@ -212,5 +231,6 @@ def assistant_api(request, schema_name):
         'reply': reply,
         'actions': [],
         'provider_configured': False,
+        'provider_status': 'unconfigured',
         'available_tools': len(enabled_tool_definitions(tenant)),
     })

@@ -6,6 +6,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from django.conf import settings
+from django.utils import timezone
 
 from .registry import execute_tool
 
@@ -26,7 +27,12 @@ def run_assistant_model_turn(
     api_key = getattr(settings, 'AI_ASSISTANT_API_KEY', '')
     model = getattr(settings, 'AI_ASSISTANT_MODEL', '')
     if not api_key or not model:
-        return {'reply': None, 'actions': [], 'tools_used': []}
+        return {
+            'reply': None,
+            'actions': [],
+            'tools_used': [],
+            'provider_status': 'unconfigured',
+        }
 
     page_context = '\n'.join(
         f"- {page['label']}: {page['description']} URL {page['url']}"
@@ -54,6 +60,7 @@ def run_assistant_model_turn(
         'Never invent a route, feature, metric, or school fact. If documentation is insufficient, say what is unknown. '
         'You may call only the supplied read-only tools. Never claim to write, approve, delete, collect, or modify records. '
         'When tools return action URLs, summarize the result briefly; the application will render the verified links separately. '
+        f'Today in the school timezone: {timezone.localdate().isoformat()}\n'
         f'Current page: {current_page}\nEnabled pages:\n{page_context}\n'
         f'Relevant AXIS documentation:\n{docs_context or "No matching documentation section."}'
     )
@@ -99,6 +106,7 @@ def run_assistant_model_turn(
                     'reply': answer[:4000] or None,
                     'actions': final_actions,
                     'tools_used': tools_used,
+                    'provider_status': 'ready' if answer else 'unavailable',
                 }
 
             messages.append(assistant_message)
@@ -118,19 +126,37 @@ def run_assistant_model_turn(
                     final_actions.extend(result_data.get('actions', []))
                 except (ValueError, PermissionError) as exc:
                     result_data = {'error': str(exc)}
+                except Exception as exc:
+                    logger.warning(
+                        'AI assistant tool %s failed: %s',
+                        tool_name,
+                        type(exc).__name__,
+                    )
+                    result_data = {
+                        'error': 'The data lookup failed. Do not guess or infer the missing result.',
+                    }
                 messages.append({
                     'role': 'tool',
                     'tool_call_id': tool_call.get('id', ''),
                     'content': json.dumps(result_data, ensure_ascii=False)[:12000],
                 })
-        except (HTTPError, URLError, TimeoutError, ValueError, KeyError, IndexError) as exc:
+        except (
+            HTTPError, URLError, TimeoutError, ValueError, KeyError, IndexError,
+            TypeError, AttributeError,
+        ) as exc:
             logger.warning('AI assistant provider request failed: %s', type(exc).__name__)
-            return {'reply': None, 'actions': [], 'tools_used': tools_used}
+            return {
+                'reply': None,
+                'actions': [],
+                'tools_used': tools_used,
+                'provider_status': 'unavailable',
+            }
 
     return {
         'reply': 'I found the relevant school data, but could not finish summarizing it. The verified results are linked below.' if not roman_urdu else 'Relevant school data mil gaya, lekin summary complete nahin ho saki. Verified results neeche links mein hain.',
         'actions': final_actions,
         'tools_used': tools_used,
+        'provider_status': 'ready',
     }
 
 
