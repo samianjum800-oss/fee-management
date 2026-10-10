@@ -86,9 +86,16 @@ def run_assistant_model_turn(
         payload = {
             'model': model,
             'temperature': 0.2,
-            'max_tokens': 700,
             'messages': messages,
         }
+        if 'gpt-oss' in model.lower():
+            payload.update({
+                'max_completion_tokens': 4096,
+                'reasoning_effort': 'low',
+                'reasoning_format': 'hidden',
+            })
+        else:
+            payload['max_tokens'] = 1200
         if tools:
             payload['tools'] = tools
             payload['tool_choice'] = 'auto'
@@ -98,6 +105,7 @@ def run_assistant_model_turn(
             headers={
                 'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json',
+                'User-Agent': 'AXIS-School-Assistant/1.0',
             },
             method='POST',
         )
@@ -147,8 +155,19 @@ def run_assistant_model_turn(
                     'tool_call_id': tool_call.get('id', ''),
                     'content': json.dumps(result_data, ensure_ascii=False)[:12000],
                 })
+        except HTTPError as exc:
+            logger.warning(
+                'AI assistant provider request failed: HTTP %s',
+                exc.code,
+            )
+            return {
+                'reply': None,
+                'actions': [],
+                'tools_used': tools_used,
+                'provider_status': 'unavailable',
+            }
         except (
-            HTTPError, URLError, TimeoutError, ValueError, KeyError, IndexError,
+            URLError, TimeoutError, ValueError, KeyError, IndexError,
             TypeError, AttributeError,
         ) as exc:
             logger.warning('AI assistant provider request failed: %s', type(exc).__name__)
