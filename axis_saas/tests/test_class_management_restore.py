@@ -170,6 +170,7 @@ class ClassManagementRestoreTests(TestCase):
             },
         )
         self.assertEqual(edit_response.status_code, 302)
+        self.assertNotIn("open_fee_structure=1", edit_response["Location"])
         with schema_context(self.tenant.schema_name):
             self.assertEqual(FeeStructure.objects.get(grade="5 - A").pk, fee.pk)
             self.assertEqual(
@@ -187,7 +188,8 @@ class ClassManagementRestoreTests(TestCase):
         self.tenant.tenant_type = "wing_school"
         self.tenant.save(update_fields=["tenant_type"])
         with schema_context(self.tenant.schema_name):
-            wing = WingCategory.objects.create(name="North")
+            campus = WingCategory.objects.create(name="North")
+            wing = WingCategory.objects.create(name="Original Wing", parent=campus)
             school_class = SchoolClass.objects.create(
                 name="5",
                 section="A",
@@ -241,3 +243,90 @@ class ClassManagementRestoreTests(TestCase):
                     is_active=True,
                 ).exists()
             )
+
+    def test_campus_management_edits_adds_and_deactivates_wings_and_campus(self):
+        self.tenant.tenant_type = "wing_school"
+        self.tenant.save(update_fields=["tenant_type"])
+        with schema_context(self.tenant.schema_name):
+            campus = WingCategory.objects.create(name="North")
+            wing = WingCategory.objects.create(name="Junior", parent=campus)
+            removed_wing = WingCategory.objects.create(name="Old Wing", parent=campus)
+
+        edit_response = self.client.post(
+            f"/portal/{self.tenant.schema_name}/settings/",
+            {
+                "return_to": "classes_management",
+                "category_action": "manage",
+                "main_category_id": str(campus.pk),
+                "category_id": str(campus.pk),
+                "main_category": "North Campus",
+                "subcategory_ids": [str(wing.pk), str(removed_wing.pk), ""],
+                "subcategory_names": ["Junior School", "Old Wing", "Senior School"],
+                "deleted_subcategories": [str(removed_wing.pk)],
+            },
+        )
+        self.assertEqual(edit_response.status_code, 302)
+        with schema_context(self.tenant.schema_name):
+            campus.refresh_from_db()
+            wing.refresh_from_db()
+            removed_wing.refresh_from_db()
+            self.assertEqual(campus.name, "North Campus")
+            self.assertEqual(wing.name, "Junior School")
+            self.assertTrue(WingCategory.objects.get(name="Senior School").is_active)
+            self.assertFalse(removed_wing.is_active)
+
+        delete_response = self.client.post(
+            f"/portal/{self.tenant.schema_name}/settings/",
+            {
+                "return_to": "classes_management",
+                "category_action": "delete_main",
+                "category_id": str(campus.pk),
+            },
+        )
+        self.assertEqual(delete_response.status_code, 302)
+        with schema_context(self.tenant.schema_name):
+            campus.refresh_from_db()
+            wing.refresh_from_db()
+            self.assertFalse(campus.is_active)
+            self.assertFalse(wing.is_active)
+
+    def test_adding_wing_to_an_existing_campus_does_not_require_new_campus_name(self):
+        self.tenant.tenant_type = "wing_school"
+        self.tenant.save(update_fields=["tenant_type"])
+        with schema_context(self.tenant.schema_name):
+            campus = WingCategory.objects.create(name="North")
+
+        response = self.client.post(
+            f"/portal/{self.tenant.schema_name}/settings/",
+            {
+                "return_to": "classes_management",
+                "category_action": "add",
+                "main_category_id": str(campus.pk),
+                "main_category": "",
+                "sub_category": "Senior Wing",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        with schema_context(self.tenant.schema_name):
+            self.assertTrue(
+                WingCategory.objects.filter(
+                    name="Senior Wing",
+                    parent=campus,
+                    is_active=True,
+                ).exists()
+            )
+
+    def test_fee_classes_are_sorted_unset_first_then_highest_fee(self):
+        with schema_context(self.tenant.schema_name):
+            high_class = SchoolClass.objects.create(name="Grade 12", section="A")
+            low_class = SchoolClass.objects.create(name="Grade 11", section="A")
+            missing_class = SchoolClass.objects.create(name="Grade 10", section="A")
+            FeeStructure.objects.create(grade="Grade 12 - A", monthly_fee=Decimal("2000"))
+            FeeStructure.objects.create(grade="Grade 11 - A", monthly_fee=Decimal("1000"))
+
+        response = self.client.get(f"/portal/{self.tenant.schema_name}/my-classes/")
+        self.assertEqual(response.status_code, 200)
+        fee_class_ids = [
+            item.id for item in response.context["fee_classes"]
+        ]
+        self.assertEqual(fee_class_ids, [missing_class.id, high_class.id, low_class.id])

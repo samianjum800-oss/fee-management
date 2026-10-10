@@ -61,6 +61,12 @@ def _build_context(request, schema_name, tenant):
         }
         for cls in fee_classes:
             cls.fee_structure = fee_map.get(cls.fee_grade)
+        fee_classes.sort(
+            key=lambda cls: (
+                cls.fee_structure is not None,
+                -(cls.fee_structure.monthly_fee if cls.fee_structure else 0),
+            )
+        )
 
         sections = list(
             SchoolClass.objects.filter(is_active=True)

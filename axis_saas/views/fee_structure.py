@@ -48,6 +48,7 @@ def fee_structure(request, schema_name):
         if request.method == 'POST':
             class_id = request.POST.get('class_id')
             monthly_fee = request.POST.get('monthly_fee')
+            fee_saved = False
             if class_id and monthly_fee:
                 try:
                     if not class_id.isdecimal():
@@ -68,6 +69,7 @@ def fee_structure(request, schema_name):
                             custom_fee=form.cleaned_data['monthly_fee']
                         )
                         messages.success(request, f'Fee structure for {grade} saved successfully.')
+                        fee_saved = True
                     else:
                         for errors in form.errors.values():
                             for error in errors:
@@ -78,11 +80,10 @@ def fee_structure(request, schema_name):
                 messages.error(request, 'Please select a class and enter a monthly fee.')
             if request.POST.get('return_to') == 'classes_management':
                 classes_url = reverse('classes_management', kwargs={'schema_name': schema_name})
+                query = '' if fee_saved else '?open_fee_structure=1'
                 edit_class_id = class_id if class_id and class_id.isdecimal() else ''
-                query = (
-                    f'?open_fee_structure=1&edit_fee={edit_class_id}'
-                    if edit_class_id else '?open_fee_structure=1'
-                )
+                if not fee_saved and edit_class_id:
+                    query += f'&edit_fee={edit_class_id}'
                 return redirect(f'{classes_url}{query}')
             return redirect('fee_structure', schema_name=schema_name)
 

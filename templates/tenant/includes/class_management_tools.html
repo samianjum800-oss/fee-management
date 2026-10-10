@@ -1,4 +1,5 @@
 <style>
+    .class-tools-overlay [hidden] { display: none !important; }
     .class-tools-overlay {
         position: fixed;
         inset: 0;
@@ -24,6 +25,7 @@
         animation: classToolsIn 180ms ease-out;
     }
     .class-tools-panel.compact { width: min(560px, 100%); }
+    .class-tools-panel.campus-panel { width: min(700px, 100%); }
     @keyframes classToolsIn {
         from { opacity: 0; transform: translateY(12px) scale(.99); }
         to { opacity: 1; transform: translateY(0) scale(1); }
@@ -124,16 +126,92 @@
     .class-tools-form-actions { display: flex; justify-content: flex-end; gap: .65rem; flex-wrap: wrap; }
     .campus-category-list { display: grid; gap: .6rem; margin-top: 1rem; }
     .campus-category-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: .7rem 1rem;
+        padding: .8rem .9rem;
+        border: 1px solid var(--border);
+        border-radius: .75rem;
+        background: var(--surface);
+    }
+    .campus-category-item > strong { grid-column: 1; color: var(--text); }
+    .campus-category-item > .campus-wing-list {
+        grid-column: 1;
+        display: grid;
+        gap: .4rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .campus-wing-list li { display: flex; align-items: center; gap: .55rem; color: var(--muted); }
+    .campus-wing-list li::before { content: ''; width: .7rem; height: 1px; background: var(--border); }
+    .campus-category-item > .campus-edit-button { grid-column: 2; grid-row: 1 / span 2; }
+    .campus-editor-wing {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: .6rem;
+        padding: .65rem;
+        border: 1px solid var(--border);
+        border-radius: .7rem;
+        background: var(--surface-alt);
+    }
+    .campus-editor-wing.removed { opacity: .55; }
+    .campus-editor-wing.removed input { text-decoration: line-through; }
+    .campus-editor-wing input {
+        width: 100%;
+        min-height: 2.5rem;
+        padding: .6rem .7rem;
+        border: 1px solid var(--border);
+        border-radius: .6rem;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+    }
+    .campus-editor-wing button, .class-tools-action.danger {
+        border-color: rgba(220, 38, 38, .22);
+        color: #b91c1c;
+    }
+    .class-tools-toolbar { align-items: center; }
+    .class-tools-search-wrap { position: relative; flex: 1 1 260px; }
+    .class-tools-search-wrap input { padding-left: 2.5rem; }
+    .class-tools-search-icon {
+        position: absolute;
+        top: 50%;
+        left: .85rem;
+        width: 1rem;
+        height: 1rem;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+    }
+    .class-tools-summary {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: .8rem .9rem;
+        gap: .5rem;
+        margin: -.25rem 0 1rem;
+        color: var(--muted);
+        font-size: .82rem;
+    }
+    .class-tools-summary strong { color: var(--text); }
+    .fee-locked-class {
+        display: grid;
+        gap: .35rem;
+        padding: .85rem 1rem;
         border: 1px solid var(--border);
         border-radius: .75rem;
         background: var(--surface-alt);
     }
-    .campus-category-item small { display: block; margin-top: .15rem; color: var(--muted); }
+    .fee-locked-class span {
+        color: var(--muted);
+        font-size: .74rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .fee-locked-class strong { font-size: 1rem; color: var(--text); }
+    .fee-locked-class small { color: var(--muted); font-weight: 400; }
     @media (max-width: 640px) {
         .class-tools-overlay { padding: .55rem; align-items: flex-end; }
         .class-tools-panel { max-height: 92vh; border-radius: 1rem 1rem .7rem .7rem; }
@@ -153,13 +231,19 @@
             <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
         </div>
         <div class="class-tools-toolbar">
-            <input type="search" id="feeClassSearch" placeholder="Search a class or campus">
+            <label class="class-tools-search-wrap">
+                <svg class="class-tools-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path>
+                </svg>
+                <input type="search" id="feeClassSearch" placeholder="Search by class, section or campus">
+            </label>
             <select id="feeClassFilter" aria-label="Filter fee structures">
                 <option value="all">All classes</option>
                 <option value="set">Fee set</option>
                 <option value="missing">Fee not set</option>
             </select>
         </div>
+        <p class="class-tools-summary"><strong id="feeVisibleCount">0</strong> classes shown <span>·</span> Classes without a fee appear first</p>
         <div class="class-tools-table-wrap">
             <table class="class-tools-table">
                 <thead>
@@ -213,14 +297,12 @@
         <form method="post" action="{% url 'fee_structure' schema_name=tenant.schema_name %}" class="class-tools-form">
             {% csrf_token %}
             <input type="hidden" name="return_to" value="classes_management">
-            <label>
-                Class
-                <select name="class_id" id="feeEditClass" required>
-                    {% for cls in fee_classes %}
-                    <option value="{{ cls.id }}">{{ cls.display_name }}</option>
-                    {% endfor %}
-                </select>
-            </label>
+            <input type="hidden" name="class_id" id="feeEditClass" required>
+            <div class="fee-locked-class">
+                <span>Class</span>
+                <strong id="feeEditClassName"></strong>
+                <small>This fee will be saved only for this class.</small>
+            </div>
             <label>
                 Monthly fee (₹)
                 <input type="number" name="monthly_fee" id="feeEditAmount" min="0" step="0.01" required>
@@ -236,60 +318,110 @@
 
 {% if campus_management_enabled %}
 <div class="class-tools-overlay" id="campusManagementModal" aria-hidden="true">
-    <section class="class-tools-panel compact" role="dialog" aria-modal="true" aria-labelledby="campusManagementTitle">
+    <section class="class-tools-panel campus-panel" role="dialog" aria-modal="true" aria-labelledby="campusManagementTitle">
         <div class="class-tools-heading">
             <div>
                 <h2 id="campusManagementTitle">Campus management</h2>
-                <p>Add a campus or wing, or edit an existing category.</p>
+                <p>Keep campuses and their wings organized in one place.</p>
             </div>
             <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
         </div>
-        <button type="button" class="class-tools-action primary" id="addCampusCategory">+ Add campus / wing</button>
-        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}"
-              class="class-tools-form" id="campusCategoryEditor" hidden style="margin-top:1rem;">
-            {% csrf_token %}
-            <input type="hidden" name="return_to" value="classes_management">
-            <input type="hidden" name="category_action" value="add" id="campusCategoryAction">
-            <input type="hidden" name="category_id" id="campusCategoryId">
-            <label>
-                Campus
-                <input type="text" name="main_category" id="campusMainCategory" maxlength="100" required placeholder="e.g. Main Campus">
-            </label>
-            <label>
-                Wing (optional)
-                <input type="text" name="sub_category" id="campusSubCategory" maxlength="100" placeholder="e.g. Girls Wing">
-            </label>
-            <div class="class-tools-form-actions">
-                <button type="button" class="class-tools-link" id="cancelCampusEdit">Cancel</button>
-                <button type="submit" class="class-tools-action primary" id="campusCategorySubmit">Add campus / wing</button>
-            </div>
-        </form>
+        <button type="button" class="class-tools-action primary" id="addCampusCategory">+ Add campus or wing</button>
         <div class="campus-category-list">
             {% for campus in wing_parents %}
                 {% with children=campus.active_children %}
-                    {% if children %}
-                        {% for wing in children %}
-                            {% if wing.is_active %}
-                            <div class="campus-category-item">
-                                <span><strong>{{ campus.name }}</strong><small>{{ wing.name }}</small></span>
-                                <button type="button" class="class-tools-action campus-edit-button"
-                                        data-id="{{ wing.id }}" data-main="{{ campus.name|escape }}"
-                                        data-sub="{{ wing.name|escape }}">Edit</button>
-                            </div>
-                            {% endif %}
-                        {% endfor %}
-                    {% elif campus.is_active %}
                     <div class="campus-category-item">
-                        <span><strong>{{ campus.name }}</strong><small>Campus</small></span>
+                        <strong>{{ campus.name }}</strong>
+                        <ul class="campus-wing-list">
+                            {% for wing in children %}
+                            <li data-wing-id="{{ wing.id }}" data-wing-name="{{ wing.name|escape }}">{{ wing.name }}</li>
+                            {% empty %}
+                            <li class="no-wings">No wings added yet</li>
+                            {% endfor %}
+                        </ul>
                         <button type="button" class="class-tools-action campus-edit-button"
-                                data-id="{{ campus.id }}" data-main="{{ campus.name|escape }}" data-sub="">Edit</button>
+                                data-id="{{ campus.id }}" data-main="{{ campus.name|escape }}">Edit</button>
                     </div>
-                    {% endif %}
                 {% endwith %}
             {% empty %}
             <p style="margin:.5rem 0;color:var(--muted);">No campuses or wings configured yet.</p>
             {% endfor %}
         </div>
+    </section>
+</div>
+
+<div class="class-tools-overlay" id="campusAddModal" aria-hidden="true">
+    <section class="class-tools-panel compact" role="dialog" aria-modal="true" aria-labelledby="campusAddTitle">
+        <div class="class-tools-heading">
+            <div>
+                <h2 id="campusAddTitle">Add campus or wing</h2>
+                <p>Add a new campus with an optional first wing, or add a wing to a campus you already have.</p>
+            </div>
+            <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
+        </div>
+        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}" class="class-tools-form">
+            {% csrf_token %}
+            <input type="hidden" name="return_to" value="classes_management">
+            <input type="hidden" name="category_action" value="add">
+            <label>
+                Add to
+                <select name="main_category_id" id="addCampusTarget">
+                    <option value="">Create a new campus</option>
+                    {% for campus in wing_parents %}
+                    <option value="{{ campus.id }}">{{ campus.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label id="newCampusNameField">
+                New campus name
+                <input type="text" name="main_category" id="newCampusName" maxlength="100" placeholder="e.g. Main Campus">
+            </label>
+            <label>
+                New wing (optional)
+                <input type="text" name="sub_category" maxlength="100" placeholder="e.g. Girls Wing">
+            </label>
+            <div class="class-tools-form-actions">
+                <button type="button" class="class-tools-link" data-close-tools>Cancel</button>
+                <button type="submit" class="class-tools-action primary">Add campus / wing</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div class="class-tools-overlay" id="campusEditModal" aria-hidden="true">
+    <section class="class-tools-panel compact" role="dialog" aria-modal="true" aria-labelledby="campusEditTitle">
+        <div class="class-tools-heading">
+            <div>
+                <h2 id="campusEditTitle">Edit campus</h2>
+                <p>Update the campus name and manage its wings.</p>
+            </div>
+            <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
+        </div>
+        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}" class="class-tools-form" id="campusEditForm">
+            {% csrf_token %}
+            <input type="hidden" name="return_to" value="classes_management">
+            <input type="hidden" name="category_action" value="manage" id="campusEditAction">
+            <input type="hidden" name="main_category_id" id="campusEditId">
+            <input type="hidden" name="category_id" id="campusDeleteId">
+            <label>
+                Campus name
+                <input type="text" name="main_category" id="campusEditName" maxlength="100" required>
+            </label>
+            <div>
+                <div class="class-tools-form-actions" style="justify-content:space-between;align-items:center;margin-bottom:.55rem;">
+                    <strong>Wings</strong>
+                    <button type="button" class="class-tools-link" id="addWingToCampus">+ Add wing</button>
+                </div>
+                <div class="class-tools-form" id="campusEditWings"></div>
+            </div>
+            <div class="class-tools-form-actions" style="justify-content:space-between;">
+                <button type="button" class="class-tools-action danger" id="deleteCampus">Delete campus</button>
+                <div class="class-tools-form-actions">
+                    <button type="button" class="class-tools-link" data-close-tools>Cancel</button>
+                    <button type="submit" class="class-tools-action primary">Save changes</button>
+                </div>
+            </div>
+        </form>
     </section>
 </div>
 {% endif %}
@@ -299,6 +431,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const feeList = document.getElementById('feeStructuresModal');
     const feeEdit = document.getElementById('feeEditModal');
     const campusModal = document.getElementById('campusManagementModal');
+    const campusAdd = document.getElementById('campusAddModal');
+    const campusEdit = document.getElementById('campusEditModal');
     const show = (modal) => {
         if (!modal) return;
         modal.classList.add('active');
@@ -331,27 +465,63 @@ document.addEventListener('DOMContentLoaded', function () {
     const feeFilter = document.getElementById('feeClassFilter');
     const feeRows = Array.from(document.querySelectorAll('.fee-class-row'));
     const noFeeRows = document.getElementById('feeClassNoResults');
+    const feeVisibleCount = document.getElementById('feeVisibleCount');
+    function fuzzyWordMatch(queryWord, textWord) {
+        if (textWord.includes(queryWord)) return true;
+        const allowedDistance = queryWord.length >= 8 ? 2 : queryWord.length >= 4 ? 1 : 0;
+        if (!allowedDistance) return false;
+        const maxLength = queryWord.length + allowedDistance;
+        for (let start = 0; start < textWord.length; start++) {
+            for (let length = Math.max(1, queryWord.length - allowedDistance);
+                 length <= maxLength && start + length <= textWord.length;
+                 length++) {
+                const candidate = textWord.slice(start, start + length);
+                if (candidate.length * queryWord.length === 0) continue;
+                let previous = Array.from({length: candidate.length + 1}, (_, index) => index);
+                for (let row = 1; row <= queryWord.length; row++) {
+                    const current = [row];
+                    for (let column = 1; column <= candidate.length; column++) {
+                        current[column] = Math.min(
+                            current[column - 1] + 1,
+                            previous[column] + 1,
+                            previous[column - 1] + (queryWord[row - 1] === candidate[column - 1] ? 0 : 1)
+                        );
+                    }
+                    previous = current;
+                }
+                if (previous[candidate.length] <= allowedDistance) return true;
+            }
+        }
+        return false;
+    }
     function filterFeeRows() {
         if (!feeRows.length) return;
-        const query = (feeSearch.value || '').trim().toLocaleLowerCase();
+        const queryWords = (feeSearch.value || '').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
         const status = feeFilter.value;
         let visible = 0;
         feeRows.forEach((row) => {
-            const matches = row.dataset.search.includes(query)
+            const nameWords = row.dataset.search.toLocaleLowerCase().split(/[\s()\-–]+/).filter(Boolean);
+            const matches = queryWords.every((word) =>
+                nameWords.some((nameWord) => fuzzyWordMatch(word, nameWord))
+            )
                 && (status === 'all' || row.dataset.status === status);
             row.hidden = !matches;
             if (matches) visible++;
         });
         noFeeRows.hidden = visible !== 0;
+        feeVisibleCount.textContent = visible;
     }
     if (feeSearch) feeSearch.addEventListener('input', filterFeeRows);
     if (feeFilter) feeFilter.addEventListener('change', filterFeeRows);
+    filterFeeRows();
 
     const feeClass = document.getElementById('feeEditClass');
     const feeAmount = document.getElementById('feeEditAmount');
+    const feeClassName = document.getElementById('feeEditClassName');
     document.querySelectorAll('.fee-edit-button').forEach((button) => {
         button.addEventListener('click', () => {
             feeClass.value = button.dataset.classId;
+            feeClassName.textContent = button.dataset.className;
             feeAmount.value = button.dataset.monthlyFee || '';
             document.getElementById('feeEditTitle').textContent =
                 button.dataset.monthlyFee ? 'Edit monthly fee' : 'Set monthly fee';
@@ -362,37 +532,87 @@ document.addEventListener('DOMContentLoaded', function () {
     const cancelFeeEdit = document.getElementById('cancelFeeEdit');
     if (cancelFeeEdit) cancelFeeEdit.addEventListener('click', () => hide(feeEdit));
 
-    const editor = document.getElementById('campusCategoryEditor');
-    const campusAction = document.getElementById('campusCategoryAction');
-    const campusId = document.getElementById('campusCategoryId');
-    const campusMain = document.getElementById('campusMainCategory');
-    const campusSub = document.getElementById('campusSubCategory');
-    const campusSubmit = document.getElementById('campusCategorySubmit');
-    function editCampus(category) {
-        editor.hidden = false;
-        campusAction.value = category ? 'edit' : 'add';
-        campusId.value = category ? category.id : '';
-        campusMain.value = category ? category.main : '';
-        campusSub.value = category ? category.sub : '';
-        campusSubmit.textContent = category ? 'Save changes' : 'Add campus / wing';
-        campusMain.focus();
-    }
     const addCampus = document.getElementById('addCampusCategory');
-    if (addCampus) addCampus.addEventListener('click', () => editCampus(null));
-    document.querySelectorAll('.campus-edit-button').forEach((button) => {
-        button.addEventListener('click', () => editCampus({
-            id: button.dataset.id,
-            main: button.dataset.main,
-            sub: button.dataset.sub
-        }));
+    if (addCampus) addCampus.addEventListener('click', () => show(campusAdd));
+    const addCampusTarget = document.getElementById('addCampusTarget');
+    const newCampusField = document.getElementById('newCampusNameField');
+    const newCampusName = document.getElementById('newCampusName');
+    function updateCampusTarget() {
+        if (!addCampusTarget) return;
+        const addingToExisting = Boolean(addCampusTarget.value);
+        newCampusField.hidden = addingToExisting;
+        newCampusName.required = !addingToExisting;
+        if (addingToExisting) newCampusName.value = '';
+    }
+    if (addCampusTarget) addCampusTarget.addEventListener('change', updateCampusTarget);
+    updateCampusTarget();
+
+    const campusEditForm = document.getElementById('campusEditForm');
+    const campusEditName = document.getElementById('campusEditName');
+    const campusEditId = document.getElementById('campusEditId');
+    const campusDeleteId = document.getElementById('campusDeleteId');
+    const campusEditAction = document.getElementById('campusEditAction');
+    const campusEditWings = document.getElementById('campusEditWings');
+    const addWingToCampus = document.getElementById('addWingToCampus');
+    function addWingRow(wingId, wingName) {
+        const row = document.createElement('div');
+        row.className = 'campus-editor-wing';
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'subcategory_ids';
+        idInput.value = wingId || '';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.name = 'subcategory_names';
+        nameInput.value = wingName || '';
+        nameInput.maxLength = 100;
+        nameInput.placeholder = 'Wing name';
+        nameInput.required = true;
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'class-tools-action danger';
+        removeButton.textContent = wingId ? 'Remove' : 'Cancel';
+        if (wingId) {
+            const deleteInput = document.createElement('input');
+            deleteInput.type = 'hidden';
+            deleteInput.name = 'deleted_subcategories';
+            deleteInput.value = wingId;
+            deleteInput.disabled = true;
+            row.append(deleteInput);
+            removeButton.addEventListener('click', () => {
+                const removed = row.classList.toggle('removed');
+                deleteInput.disabled = !removed;
+                nameInput.required = !removed;
+                removeButton.textContent = removed ? 'Undo' : 'Remove';
+            });
+        } else {
+            removeButton.addEventListener('click', () => row.remove());
+        }
+        row.append(idInput, nameInput, removeButton);
+        campusEditWings.appendChild(row);
+    }
+    if (addWingToCampus) addWingToCampus.addEventListener('click', () => {
+        addWingRow('', '');
+        const rows = campusEditWings.querySelectorAll('.campus-editor-wing');
+        rows[rows.length - 1].querySelector('input[name="subcategory_names"]').focus();
     });
-    const cancelCampusEdit = document.getElementById('cancelCampusEdit');
-    if (cancelCampusEdit) cancelCampusEdit.addEventListener('click', () => {
-        editor.hidden = true;
-        editor.reset();
-        campusAction.value = 'add';
-        campusId.value = '';
-        campusSubmit.textContent = 'Add campus / wing';
+    document.querySelectorAll('.campus-edit-button').forEach((button) => {
+        button.addEventListener('click', () => {
+            campusEditId.value = button.dataset.id;
+            campusDeleteId.value = button.dataset.id;
+            campusEditName.value = button.dataset.main;
+            campusEditWings.replaceChildren();
+            button.closest('.campus-category-item')
+                .querySelectorAll('[data-wing-id]')
+                .forEach((wing) => addWingRow(wing.dataset.wingId, wing.dataset.wingName));
+            show(campusEdit);
+        });
+    });
+    const deleteCampus = document.getElementById('deleteCampus');
+    if (deleteCampus) deleteCampus.addEventListener('click', () => {
+        if (!window.confirm('Deactivate this campus and all its wings? Existing class records will be kept.')) return;
+        campusEditAction.value = 'delete_main';
+        campusEditForm.submit();
     });
 
     const params = new URLSearchParams(window.location.search);
@@ -400,18 +620,17 @@ document.addEventListener('DOMContentLoaded', function () {
         show(feeList);
         const editId = params.get('edit_fee');
         if (editId) {
-            const editButton = document.querySelector(
-                '.fee-edit-button[data-class-id="' + CSS.escape(editId) + '"]'
-            );
+            const editButton = feeRows
+                .map((row) => row.querySelector('.fee-edit-button'))
+                .find((button) => button && button.dataset.classId === editId);
             if (editButton) editButton.click();
         }
     }
     if (params.get('open_campus_management') === '1') show(campusModal);
+    if (params.get('open_campus_add') === '1') show(campusAdd);
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
-            hide(feeEdit);
-            hide(feeList);
-            hide(campusModal);
+            document.querySelectorAll('.class-tools-overlay.active').forEach(hide);
         }
     });
 });
