@@ -56,6 +56,7 @@ from .views.students import students_by_teacher
 from .pwa_views import manifest, service_worker
 from .views import voucher_status_api, generate_voucher_api, voucher_html_api, global_search_api
 from .views import fee_logs, mobile_fee_logs, global_search_api
+from .views.reports.attedence import attedence_report
 from .views.admin_attendence import (
     admin_attendance_view,
     admin_attendance_students_api,
@@ -308,6 +309,7 @@ urlpatterns = [
     path('portal/<slug:schema_name>/defaulters/', defaulters_view, name='defaulters'),
     path('portal/<slug:schema_name>/defaulters/mobile/', mobile_defaulters_view, name='mobile_defaulters'),
     path('portal/<slug:schema_name>/reports/', reports_view, name='reports'),
+    path('portal/<slug:schema_name>/reports/attedence/', portal_wrapper(login_required_for_schema(attedence_report)), name='attendance_report'),
     path('portal/<slug:schema_name>/reports/mobile/', mobile_reports_view, name='mobile_reports'),
     path('portal/<slug:schema_name>/settings/', settings_view, name='settings'),
     path('portal/<slug:schema_name>/fee/structure/', fee_structure_view, name='fee_structure'),

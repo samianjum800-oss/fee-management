@@ -1,0 +1,292 @@
+{% extends 'tenant/base.html' %}
+{% load static %}
+{% block title %}Attendance Intelligence | {{ tenant.name }}{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.att-page { max-width: 1500px; margin: 0 auto; padding-bottom: 2rem; }
+.att-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.att-hero h1 { margin: 0; }
+.att-hero p { max-width: 680px; margin-top: .35rem; color: var(--muted); }
+.att-actions, .att-quick-ranges, .att-jump { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.att-button, .att-jump a, .att-quick-ranges a { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 40px; padding: .55rem .85rem; border: 1px solid var(--border); border-radius: .55rem; background: var(--surface); color: var(--text); text-decoration: none; font-size: .88rem; font-weight: 650; cursor: pointer; }
+.att-button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+.att-button.primary:hover { background: #1d4ed8; }
+.att-button:hover, .att-jump a:hover, .att-quick-ranges a:hover { border-color: var(--primary); color: var(--primary); }
+.att-button.primary:hover { color: #fff; }
+.att-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--surface); }
+.att-jump { margin: .75rem 0 1rem; }
+.att-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: .75rem; align-items: end; }
+.att-field { display: flex; min-width: 0; flex-direction: column; gap: .3rem; }
+.att-field label { color: var(--muted); font-size: .75rem; font-weight: 700; }
+.att-field input, .att-field select, .att-assistant-input { width: 100%; min-height: 42px; padding: .55rem .65rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--surface-alt); color: var(--text); }
+.att-filter-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+.att-quick-ranges { margin-bottom: .85rem; }
+.att-quick-ranges a { min-height: 34px; padding: .35rem .65rem; font-size: .78rem; }
+.att-quick-ranges a.active { color: #fff; background: #2563eb; border-color: #2563eb; }
+.att-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .7rem; margin: 1rem 0; }
+.att-kpi { min-width: 0; padding: .9rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--surface); }
+.att-kpi span { display: block; color: var(--muted); font-size: .72rem; font-weight: 750; text-transform: uppercase; }
+.att-kpi strong { display: block; margin-top: .25rem; font-size: 1.35rem; overflow-wrap: anywhere; }
+.att-kpi small { display: block; margin-top: .2rem; color: var(--muted); }
+.att-section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .8rem; }
+.att-section-head h2, .att-section-head h3 { margin: 0; font-size: 1.08rem; }
+.att-section-head p, .att-note { margin: .25rem 0 0; color: var(--muted); font-size: .8rem; }
+.att-chart-grid, .att-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: .85rem; }
+.att-chart-box { min-width: 0; padding: .8rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface-alt); }
+.att-chart-box h3 { margin: 0 0 .7rem; font-size: .92rem; }
+.att-chart-box canvas { display: block; max-height: 280px; }
+.att-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: .6rem; }
+.att-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.att-table th, .att-table td { padding: .65rem .75rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.att-table th { background: var(--surface-alt); color: var(--muted); font-size: .7rem; text-transform: uppercase; }
+.att-table tr:last-child td { border-bottom: 0; }
+.att-link { color: var(--primary); font-weight: 700; text-decoration: none; }
+.att-link:hover { text-decoration: underline; }
+.att-badge { display: inline-flex; padding: .18rem .5rem; border-radius: 999px; background: var(--surface-alt); font-size: .73rem; font-weight: 750; white-space: nowrap; }
+.att-badge.present { color: #047857; background: #d1fae5; }
+.att-badge.absent { color: #b91c1c; background: #fee2e2; }
+.att-badge.late, .att-badge.half_day { color: #92400e; background: #fef3c7; }
+.att-badge.excused, .att-badge.holiday { color: #1d4ed8; background: #dbeafe; }
+[data-theme="dark"] .att-badge.present { color: #a7f3d0; background: #064e3b; }
+[data-theme="dark"] .att-badge.absent { color: #fecaca; background: #7f1d1d; }
+[data-theme="dark"] .att-badge.late, [data-theme="dark"] .att-badge.half_day { color: #fde68a; background: #78350f; }
+[data-theme="dark"] .att-badge.excused, [data-theme="dark"] .att-badge.holiday { color: #bfdbfe; background: #1e3a8a; }
+.att-disclosure { margin: .8rem 0; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface); }
+.att-disclosure summary { padding: .85rem 1rem; font-weight: 750; cursor: pointer; }
+.att-disclosure-content { padding: 0 1rem 1rem; }
+.att-empty { padding: 1.5rem; color: var(--muted); text-align: center; }
+.att-assistant { border-left: 4px solid #2563eb; }
+.att-assistant-top { display: flex; justify-content: space-between; gap: .8rem; align-items: flex-start; }
+.att-assistant-top h2 { margin: 0; font-size: 1.05rem; }
+.att-question-row { display: flex; gap: .5rem; margin-top: .75rem; }
+.att-question-row input { flex: 1; min-width: 0; }
+.att-suggestions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+.att-suggestions button { padding: .35rem .55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-alt); color: var(--text); cursor: pointer; font-size: .75rem; }
+.att-answer { min-height: 1.5rem; margin-top: .75rem; font-weight: 650; }
+.att-pagination { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-top: .75rem; }
+.att-pagination a { color: var(--primary); font-weight: 700; text-decoration: none; }
+@media (max-width: 700px) {
+    .att-hero { flex-direction: column; }
+    .att-actions { width: 100%; }
+    .att-button { flex: 1; }
+    .att-panel { padding: .75rem; }
+    .att-question-row { flex-direction: column; }
+}
+@media print {
+    .sidebar, .topbar, .att-actions, .att-filter-panel, .att-jump, .att-assistant, .att-disclosure { display: none !important; }
+    .app-content, .main-content { margin: 0 !important; padding: 0 !important; }
+    .att-panel, .att-kpi { break-inside: avoid; box-shadow: none; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="att-page">
+    <header class="att-hero">
+        <div>
+            <h1 class="page-title">Attendance intelligence</h1>
+            <p class="page-desc">Explore daily and period attendance across the school, compare campuses and classes, and drill down to students and the recorded audit trail.</p>
+        </div>
+        <div class="att-actions">
+            <a class="att-button primary" href="{% url 'admin_attendance' schema_name=tenant.schema_name %}">Mark / manage attendance</a>
+            <a class="att-button" href="{% url 'reports' schema_name=tenant.schema_name %}">All reports</a>
+        </div>
+    </header>
+
+    <nav class="att-jump" aria-label="Attendance report sections">
+        <a href="#attendance-overview">Overview</a>
+        <a href="#attendance-breakdown">Campus &amp; class</a>
+        <a href="#student-detail">Students</a>
+        <a href="#attendance-records">Attendance records</a>
+        <a href="#attendance-audit">Audit history</a>
+    </nav>
+
+    <section class="att-panel att-filter-panel" aria-labelledby="attendance-filters-title">
+        <div class="att-section-head">
+            <div>
+                <h2 id="attendance-filters-title">Report filters</h2>
+                <p>Choose a period, school location, class, attendance source, or status.</p>
+            </div>
+        </div>
+        <div class="att-quick-ranges" aria-label="Quick date ranges">
+            <a href="?range=today" data-att-range="today" class="{% if quick_filter == 'today' %}active{% endif %}">Today</a>
+            <a href="?range=yesterday" data-att-range="yesterday" class="{% if quick_filter == 'yesterday' %}active{% endif %}">Yesterday</a>
+            <a href="?range=week" data-att-range="week" class="{% if quick_filter == 'week' %}active{% endif %}">This week</a>
+            <a href="?range=7d" data-att-range="7d" class="{% if quick_filter == '7d' %}active{% endif %}">7 days</a>
+            <a href="?range=30d" data-att-range="30d" class="{% if quick_filter == '30d' %}active{% endif %}">30 days</a>
+            <a href="?range=month" data-att-range="month" class="{% if quick_filter == 'month' %}active{% endif %}">This month</a>
+            <a href="?range=quarter" data-att-range="quarter" class="{% if quick_filter == 'quarter' %}active{% endif %}">This quarter</a>
+            <a href="?range=year" data-att-range="year" class="{% if quick_filter == 'year' %}active{% endif %}">This year</a>
+            <a href="?range=all" data-att-range="all" class="{% if quick_filter == 'all' %}active{% endif %}">All time</a>
+        </div>
+        <form method="get" class="att-filter-form">
+            <div class="att-filter-grid">
+                <div class="att-field"><label for="att-start">From</label><input id="att-start" type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" required></div>
+                <div class="att-field"><label for="att-end">To</label><input id="att-end" type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" required></div>
+                <div class="att-field"><label for="att-campus">Campus</label><select id="att-campus" name="campus"><option value="">All campuses</option>{% for item in campuses %}<option value="{{ item.id }}" {% if selected_campus.id == item.id %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+                <div class="att-field"><label for="att-wing">Wing</label><select id="att-wing" name="wing"><option value="">All wings</option>{% for item in wings %}<option value="{{ item.id }}" {% if selected_wing.id == item.id %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+                <div class="att-field"><label for="att-class">Class / section</label><select id="att-class" name="class_id"><option value="">All classes</option>{% for item in classes %}<option value="{{ item.id }}" {% if selected_class.id == item.id %}selected{% endif %}>{{ item.name }}{% if item.section %} · {{ item.section }}{% endif %}</option>{% endfor %}</select></div>
+                <div class="att-field"><label for="att-section">Section</label><select id="att-section" name="section"><option value="">All sections</option>{% for item in section_options %}<option value="{{ item }}" {% if selected_section == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></div>
+                <div class="att-field"><label for="att-period">Attendance scope</label><select id="att-period" name="period"><option value="all" {% if selected_period == 'all' %}selected{% endif %}>All marks</option><option value="full_day" {% if selected_period == 'full_day' %}selected{% endif %}>Full day only</option>{% for item in period_values %}<option value="{{ item }}" {% if selected_period == item|stringformat:'s' %}selected{% endif %}>Period {{ item }}</option>{% endfor %}</select></div>
+                <div class="att-field"><label for="att-source">Marked via</label><select id="att-source" name="source"><option value="">All sources</option>{% for value,label in source_choices %}<option value="{{ value }}" {% if selected_source == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                <div class="att-field"><label for="att-status">Record status</label><select id="att-status" name="status"><option value="">All statuses</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                <div class="att-field"><label for="att-search">Student search</label><input id="att-search" type="search" name="q" value="{{ search_query }}" placeholder="Name, roll no, guardian"></div>
+            </div>
+            <div class="att-filter-actions">
+                <button class="att-button primary" type="submit">Apply filters</button>
+                <button class="att-button" type="submit" name="format" value="csv">Download filtered CSV</button>
+                <a class="att-button" href="{% url 'attendance_report' schema_name=tenant.schema_name %}">Reset</a>
+                <button class="att-button" type="button" onclick="window.print()">Print view</button>
+            </div>
+        </form>
+        <p class="att-note">Date, campus, wing, class, section, source, and period update report summaries. Student search and record status narrow the student and individual-record tables; the top-level totals continue to show the complete status mix.</p>
+    </section>
+
+    <section class="att-kpis" id="attendance-overview" aria-label="Attendance summary">
+        <article class="att-kpi"><span>Attendance rate</span><strong>{{ totals.rate }}%</strong><small>Present + late + half-day</small></article>
+        <article class="att-kpi"><span>Attendance entries</span><strong>{{ totals.entries }}</strong><small>For selected dates and filters</small></article>
+        <article class="att-kpi"><span>Students marked</span><strong>{{ totals.students }}</strong><small>{{ active_student_count }} active in selected scope</small></article>
+        <article class="att-kpi"><span>Present</span><strong>{{ totals.present }}</strong><small>Full day and period records</small></article>
+        <article class="att-kpi"><span>Absent</span><strong>{{ totals.absent }}</strong><small>Recorded absence marks</small></article>
+        <article class="att-kpi"><span>Late / half day</span><strong>{{ totals.late|add:totals.half_day }}</strong><small>Late {{ totals.late }} · half day {{ totals.half_day }}</small></article>
+        <article class="att-kpi"><span>Excused / holiday</span><strong>{{ totals.excused|add:totals.holiday }}</strong><small>Excluded from attendance rate</small></article>
+        <article class="att-kpi"><span>Student coverage</span><strong>{{ coverage_rate }}%</strong><small>{{ marked_active_student_count }} of {{ active_student_count }} active students marked at least once</small></article>
+    </section>
+    <p class="att-note">Attendance rate is based on recorded present, late, half-day, and absent marks. Period marks count as separate entries. Coverage means unique active students with at least one mark in the selected range; it is not a daily completion percentage.</p>
+
+    <section class="att-panel att-assistant" aria-labelledby="att-assistant-title">
+        <div class="att-assistant-top">
+            <div><h2 id="att-assistant-title">Attendance insights assistant</h2><p class="att-note">Private, explainable insights calculated from the filters above. No student data is sent to an external AI service.</p></div>
+            <span class="att-badge">Local insights</span>
+        </div>
+        <div class="att-suggestions">
+            <button type="button" data-att-question="Summarize this report">Summarize this report</button>
+            <button type="button" data-att-question="Which class needs attention?">Which class needs attention?</button>
+            <button type="button" data-att-question="Who has the most absences?">Who has the most absences?</button>
+            <button type="button" data-att-question="How many classes are unmarked?">How many classes are unmarked?</button>
+        </div>
+        <form id="att-assistant-form" class="att-question-row">
+            <input id="att-assistant-question" class="att-assistant-input" type="text" maxlength="160" placeholder="Ask about the current attendance summary" autocomplete="off">
+            <button class="att-button primary" type="submit">Ask</button>
+        </form>
+        <p id="att-assistant-answer" class="att-answer" role="status" aria-live="polite">Choose a suggested question or ask about attendance rate, absences, class risk, or unmarked classes.</p>
+        {{ insights|json_script:'attendance-insights-data' }}
+    </section>
+
+    <section class="att-panel">
+        <div class="att-section-head"><div><h2>Attendance patterns</h2><p>Daily records across the selected range; chart is limited to the latest 90 days.</p></div><span>{{ start_date|date:'d M Y' }} – {{ end_date|date:'d M Y' }}</span></div>
+        <div class="att-chart-grid">
+            <div class="att-chart-box"><h3>Daily status trend</h3><canvas id="att-trend-chart" aria-label="Daily attendance trend"></canvas><p id="att-trend-empty" class="att-empty" hidden>No marks found for this date range.</p></div>
+            <div class="att-chart-box"><h3>Attendance status distribution</h3><canvas id="att-status-chart" aria-label="Attendance status distribution"></canvas><p id="att-status-empty" class="att-empty" hidden>No marks found for this date range.</p></div>
+        </div>
+        <div class="att-chart-box" style="margin-top:.85rem"><h3>Marking source</h3><div class="att-table-wrap"><table class="att-table"><thead><tr><th>Source</th><th>Recorded entries</th></tr></thead><tbody>{% for row in source_rows %}<tr><td>{{ row.label }}</td><td>{{ row.total }}</td></tr>{% empty %}<tr><td colspan="2" class="att-empty">No source data in this range.</td></tr>{% endfor %}</tbody></table></div></div>
+        {{ daily_rows|json_script:'attendance-daily-data' }}
+        {{ totals|json_script:'attendance-totals-data' }}
+    </section>
+
+    <section class="att-panel" id="attendance-breakdown">
+        <div class="att-section-head"><div><h2>Campus, wing and class comparison</h2><p>Attendance rate and recorded student reach for each level.</p></div><a class="att-link" href="{% url 'classes_management' schema_name=tenant.schema_name %}">Open class management</a></div>
+        <div class="att-summary-grid">
+            <div><h3>Campus summary</h3><div class="att-table-wrap"><table class="att-table"><thead><tr><th>Campus</th><th>Entries</th><th>Students marked</th><th>Rate</th><th>Absent</th></tr></thead><tbody>{% for row in campus_rows %}<tr><td>{{ row.campus_name|default:'Unassigned' }}</td><td>{{ row.entries }}</td><td>{{ row.students }}</td><td><span class="att-badge {% if row.rate < 75 %}absent{% else %}present{% endif %}">{{ row.rate }}%</span></td><td>{{ row.absent }}</td></tr>{% empty %}<tr><td colspan="5" class="att-empty">No campus attendance in this range.</td></tr>{% endfor %}</tbody></table></div></div>
+            <div><h3>Wing summary</h3><div class="att-table-wrap"><table class="att-table"><thead><tr><th>Campus / wing</th><th>Entries</th><th>Students marked</th><th>Rate</th><th>Absent</th></tr></thead><tbody>{% for row in wing_rows %}<tr><td>{% if row.school_class__wing_category__parent__name %}{{ row.school_class__wing_category__parent__name }} / {% endif %}{{ row.school_class__wing_category__name|default:'Unassigned' }}</td><td>{{ row.entries }}</td><td>{{ row.students }}</td><td><span class="att-badge {% if row.rate < 75 %}absent{% else %}present{% endif %}">{{ row.rate }}%</span></td><td>{{ row.absent }}</td></tr>{% empty %}<tr><td colspan="5" class="att-empty">No wing attendance in this range.</td></tr>{% endfor %}</tbody></table></div></div>
+        </div>
+        <details class="att-disclosure"><summary>Class-by-class report ({{ class_rows|length }} classes)</summary><div class="att-disclosure-content"><div class="att-table-wrap"><table class="att-table"><thead><tr><th>Campus / wing</th><th>Class</th><th>Enrolled</th><th>Students marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Rate</th><th>Class</th></tr></thead><tbody>{% for row in class_rows %}<tr><td>{% if row.school_class.wing_category.parent %}{{ row.school_class.wing_category.parent.name }} / {% endif %}{{ row.school_class.wing_category.name|default:'—' }}</td><td>{{ row.school_class.name }}{% if row.school_class.section %} · {{ row.school_class.section }}{% endif %}</td><td>{{ row.school_class.active_students }}</td><td>{{ row.students }}</td><td>{{ row.present }}</td><td>{{ row.absent }}</td><td>{{ row.late }}</td><td><span class="att-badge {% if row.rate < 75 %}absent{% else %}present{% endif %}">{{ row.rate }}%</span></td><td><a class="att-link" href="{% url 'class_detailed' schema_name=tenant.schema_name class_id=row.school_class.id %}">View class</a></td></tr>{% empty %}<tr><td colspan="9" class="att-empty">No active classes match these filters.</td></tr>{% endfor %}</tbody></table></div></div></details>
+    </section>
+
+    {% if start_date == end_date %}
+    <section class="att-panel">
+        <div class="att-section-head"><div><h2>Classes without full-day marks</h2><p>Based on the selected date; period-only entries do not count as a full-day class mark.</p></div><span class="att-badge {% if unmarked_classes %}absent{% else %}present{% endif %}">{{ unmarked_classes|length }} pending</span></div>
+        <div class="att-table-wrap"><table class="att-table"><thead><tr><th>Class / section</th><th>Campus / wing</th><th>Class teacher</th><th>Action</th></tr></thead><tbody>{% for school_class in unmarked_classes %}<tr><td>{{ school_class.name }}{% if school_class.section %} · {{ school_class.section }}{% endif %}</td><td>{% if school_class.wing_category.parent %}{{ school_class.wing_category.parent.name }} / {% endif %}{{ school_class.wing_category.name|default:'—' }}</td><td>{% if school_class.class_teacher %}{{ school_class.class_teacher.full_name }}{% else %}—{% endif %}</td><td><a class="att-link" href="{% url 'admin_attendance' schema_name=tenant.schema_name %}">Open attendance</a> · <a class="att-link" href="{% url 'class_detailed' schema_name=tenant.schema_name class_id=school_class.id %}">View class</a></td></tr>{% empty %}<tr><td colspan="4" class="att-empty">All filtered classes have a full-day mark, or there are no active classes.</td></tr>{% endfor %}</tbody></table></div>
+    </section>
+    {% endif %}
+
+    <details class="att-disclosure" id="student-detail"><summary>Student-by-student attendance report (active students)</summary><div class="att-disclosure-content"><p class="att-note">Search and location filters above apply. Students with zero marks are included and sorted after students with absences.</p><div class="att-table-wrap"><table class="att-table"><thead><tr><th>Student</th><th>Class</th><th>Marks</th><th>Present</th><th>Absent</th><th>Late</th><th>Half day</th><th>Rate</th><th>Profile</th></tr></thead><tbody>{% for student in student_rows %}<tr><td><strong>{{ student.name }}</strong><br><small>{{ student.roll_number }}</small></td><td>{{ student.school_class|default:'Unassigned' }}</td><td>{{ student.entries }}</td><td>{{ student.present }}</td><td>{{ student.absent }}</td><td>{{ student.late }}</td><td>{{ student.half_day }}</td><td>{{ student.rate }}%</td><td><a class="att-link" href="{% url 'student_profile' schema_name=tenant.schema_name student_id=student.id %}">View profile</a></td></tr>{% empty %}<tr><td colspan="9" class="att-empty">No active students match these filters.</td></tr>{% endfor %}</tbody></table></div><div class="att-pagination"><span>Page {{ student_page.number }} of {{ student_page.paginator.num_pages }}</span>{% if student_page.has_previous %}<a href="?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&campus={{ selected_campus.id|default:'' }}&wing={{ selected_wing.id|default:'' }}&class_id={{ selected_class.id|default:'' }}&student_page={{ student_page.previous_page_number }}#student-detail">Previous</a>{% endif %}{% if student_page.has_next %}<a href="?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&campus={{ selected_campus.id|default:'' }}&wing={{ selected_wing.id|default:'' }}&class_id={{ selected_class.id|default:'' }}&student_page={{ student_page.next_page_number }}#student-detail">Next</a>{% endif %}</div></div></details>
+
+    <details class="att-disclosure" id="attendance-records"><summary>Individual attendance records ({{ record_page.paginator.count }} matching)</summary><div class="att-disclosure-content"><div class="att-table-wrap"><table class="att-table"><thead><tr><th>Date</th><th>Student</th><th>Campus / class</th><th>Period</th><th>Status</th><th>Source</th><th>Marked by</th><th>Marked at</th><th>Profile</th></tr></thead><tbody>{% for record in record_page %}<tr><td>{{ record.date|date:'d M Y' }}</td><td><strong>{{ record.student.name }}</strong><br><small>{{ record.student.roll_number }}</small></td><td>{% if record.school_class.wing_category.parent %}{{ record.school_class.wing_category.parent.name }} / {% endif %}{{ record.school_class.wing_category.name|default:'—' }}<br>{{ record.school_class.name }}{% if record.school_class.section %} · {{ record.school_class.section }}{% endif %}</td><td>{% if record.period_order %}Period {{ record.period_order }}{% else %}Full day{% endif %}</td><td><span class="att-badge {{ record.status }}">{{ record.get_status_display }}</span></td><td>{{ record.get_source_display }}</td><td>{{ record.marked_by.full_name|default:record.teacher.full_name|default:'—' }}</td><td>{{ record.marked_at|date:'d M Y, h:i A'|default:'—' }}</td><td><a class="att-link" href="{% url 'student_profile' schema_name=tenant.schema_name student_id=record.student_id %}">Profile</a></td></tr>{% empty %}<tr><td colspan="9" class="att-empty">No attendance records match these filters.</td></tr>{% endfor %}</tbody></table></div><div class="att-pagination"><span>Page {{ record_page.number }} of {{ record_page.paginator.num_pages }}</span>{% if record_page.has_previous %}<a href="?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&campus={{ selected_campus.id|default:'' }}&wing={{ selected_wing.id|default:'' }}&class_id={{ selected_class.id|default:'' }}&status={{ selected_status }}&record_page={{ record_page.previous_page_number }}#attendance-records">Previous</a>{% endif %}{% if record_page.has_next %}<a href="?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&campus={{ selected_campus.id|default:'' }}&wing={{ selected_wing.id|default:'' }}&class_id={{ selected_class.id|default:'' }}&status={{ selected_status }}&record_page={{ record_page.next_page_number }}#attendance-records">Next</a>{% endif %}</div></div></details>
+
+    <details class="att-disclosure" id="attendance-audit"><summary>Attendance audit history (latest {{ audit_rows|length }})</summary><div class="att-disclosure-content"><p class="att-note">Audit rows are filtered to the selected dates and current campus/wing/class scope where the attendance record is still linked.</p><div class="att-table-wrap"><table class="att-table"><thead><tr><th>Changed</th><th>Student</th><th>Action</th><th>Old → new</th><th>Changed by</th><th>Reason</th></tr></thead><tbody>{% for audit in audit_rows %}<tr><td>{{ audit.changed_at|date:'d M Y, h:i A' }}</td><td>{% if audit.attendance and audit.attendance.student %}<a class="att-link" href="{% url 'student_profile' schema_name=tenant.schema_name student_id=audit.attendance.student_id %}">{{ audit.attendance.student.name }}</a>{% else %}Student #{{ audit.student_id_snapshot|default:'—' }}{% endif %}</td><td>{{ audit.get_action_display }}</td><td>{{ audit.old_status|default:'—' }} → {{ audit.new_status|default:'—' }}</td><td>{{ audit.changed_by.full_name|default:audit.changed_by_name|default:'System' }}</td><td>{{ audit.reason|default:'—'|truncatechars:90 }}</td></tr>{% empty %}<tr><td colspan="6" class="att-empty">No audit changes for this range.</td></tr>{% endfor %}</tbody></table></div></div></details>
+
+    <section class="att-panel">
+        <div class="att-section-head"><div><h2>Staff attendance</h2><p>Staff check-in attendance recorded in the same date range.</p></div><a class="att-link" href="{% url 'staff_list' schema_name=tenant.schema_name %}">Staff profiles</a></div>
+        <div class="att-kpis"><article class="att-kpi"><span>Attendance rate</span><strong>{{ staff_totals.rate }}%</strong></article><article class="att-kpi"><span>Entries</span><strong>{{ staff_totals.entries }}</strong></article><article class="att-kpi"><span>Present</span><strong>{{ staff_totals.present }}</strong></article><article class="att-kpi"><span>Absent</span><strong>{{ staff_totals.absent }}</strong></article><article class="att-kpi"><span>Late</span><strong>{{ staff_totals.late }}</strong></article><article class="att-kpi"><span>On leave</span><strong>{{ staff_totals.on_leave }}</strong></article></div>
+    </section>
+</div>
+<script>
+(function () {
+    const insights = JSON.parse(document.getElementById('attendance-insights-data').textContent);
+    const answer = document.getElementById('att-assistant-answer');
+    const question = document.getElementById('att-assistant-question');
+    function answerQuestion(text) {
+        const value = (text || '').trim().toLowerCase();
+        if (!value) return;
+        if (value.includes('unmarked') || value.includes('pending class')) {
+            answer.textContent = insights.unmarked_classes === null ? 'Choose one date to see which active classes are missing a full-day mark.' : insights.unmarked_classes + ' classes lack a full-day mark on the selected date.';
+        } else if (value.includes('class') || value.includes('section') || value.includes('campus') || value.includes('risk')) {
+            answer.textContent = insights.lowest_class ? 'Lowest attendance rate in the current scope: ' + insights.lowest_class + '.' : 'There are no marked classes in this scope to compare.';
+        } else if (value.includes('who') || value.includes('student') || value.includes('absence')) {
+            answer.textContent = insights.top_absent_student ? 'Most absent student in the current student list: ' + insights.top_absent_student + '.' : 'No absent marks were recorded for the current filters.';
+        } else {
+            answer.textContent = 'For ' + insights.entries + ' attendance entries, the rate is ' + insights.rate + '%. ' + insights.absent + ' absent marks; ' + insights.marked_students + ' students have marks (' + insights.coverage_rate + '% of ' + insights.active_students + ' active students in scope).';
+        }
+    }
+    document.getElementById('att-assistant-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        answerQuestion(question.value);
+    });
+    document.querySelectorAll('[data-att-question]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            question.value = button.dataset.attQuestion;
+            answerQuestion(question.value);
+        });
+    });
+    const filterForm = document.querySelector('.att-filter-form');
+    document.querySelectorAll('[data-att-range]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            const params = new URLSearchParams(new FormData(filterForm));
+            params.set('range', link.dataset.attRange);
+            params.delete('start_date');
+            params.delete('end_date');
+            window.location.search = params.toString();
+        });
+    });
+    document.querySelectorAll('.att-pagination a').forEach(function (link) {
+        const target = new URL(link.href, window.location.origin);
+        for (const [key, value] of new FormData(filterForm).entries()) {
+            target.searchParams.set(key, value);
+        }
+        link.href = target.pathname + target.search + target.hash;
+    });
+
+    const daily = JSON.parse(document.getElementById('attendance-daily-data').textContent);
+    const totals = JSON.parse(document.getElementById('attendance-totals-data').textContent);
+    if (typeof Chart === 'undefined') return;
+    if (daily.length) {
+        new Chart(document.getElementById('att-trend-chart'), {
+            type: 'line',
+            data: { labels: daily.map(row => row.date), datasets: [
+                { label: 'Present', data: daily.map(row => row.present), borderColor: '#0f766e', backgroundColor: 'rgba(15,118,110,.10)', tension: .25 },
+                { label: 'Absent', data: daily.map(row => row.absent), borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,.08)', tension: .25 },
+                { label: 'Late', data: daily.map(row => row.late), borderColor: '#d97706', tension: .25 },
+                { label: 'Half day', data: daily.map(row => row.half_day), borderColor: '#2563eb', tension: .25 }
+            ] }, options: { responsive: true, maintainAspectRatio: true, interaction: { intersect: false, mode: 'index' } }
+        });
+    } else {
+        document.getElementById('att-trend-chart').hidden = true;
+        document.getElementById('att-trend-empty').hidden = false;
+    }
+    const statusLabels = ['Present', 'Absent', 'Late', 'Half day', 'Excused', 'Holiday'];
+    const statusValues = [totals.present, totals.absent, totals.late, totals.half_day, totals.excused, totals.holiday];
+    if (statusValues.some(value => value > 0)) {
+        new Chart(document.getElementById('att-status-chart'), {
+            type: 'doughnut', data: { labels: statusLabels, datasets: [{ data: statusValues, backgroundColor: ['#0f766e', '#dc2626', '#d97706', '#2563eb', '#64748b', '#94a3b8'] }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    } else {
+        document.getElementById('att-status-chart').hidden = true;
+        document.getElementById('att-status-empty').hidden = false;
+    }
+}());
+</script>
+{% endblock %}

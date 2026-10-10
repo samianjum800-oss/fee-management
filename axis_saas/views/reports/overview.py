@@ -4,12 +4,13 @@ AXIS views – reports module.
 
 import re
 from django.shortcuts import render, redirect, get_object_or_404
+import csv
 from django.http import JsonResponse, Http404
 from django.contrib import messages
-from django.db.models import Sum, Q, Exists, OuterRef, Max, F
+from django.db.models import Sum, Q, Exists, OuterRef, Max, F, Count, ExpressionWrapper, DecimalField
 from django.db.models.functions import TruncMonth, TruncDay
-from django.db.models import Count
 from django.core.paginator import Paginator
+from django.core.cache import cache
 from django.db import connection
 from django_tenants.utils import schema_context
 from decimal import Decimal
@@ -21,15 +22,18 @@ from functools import wraps
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from ..models import SchoolClient, Student, FeeStructure, FeeRecord, PaymentTransaction, SchoolFeeSettings, Product, ProductCategory
-from ..forms import StudentForm, FeeCollectionForm, FeeSettingsForm, FeeStructureForm, FamilyPaymentForm
+from ...models import (
+    SchoolClient, Student, FeeStructure, FeeRecord, PaymentTransaction,
+    SchoolFeeSettings, Product, ProductCategory, SaleItem, Staff,
+    StaffCredential, StaffAttendance, StudentAttendance, LeaveRequest,
+    StudentLeave, AttendanceAuditLog, SchoolClass, Subject, TimetableEntry,
+)
+from ...forms import StudentForm, FeeCollectionForm, FeeSettingsForm, FeeStructureForm, FamilyPaymentForm
 from django.http import JsonResponse, HttpResponse
 from django.db import transaction
-from ..models import ManualGenerationLog
+from ...models import ManualGenerationLog
 
-from django.views.decorators.cache import cache_page
-
-from .helpers import *
+from ..helpers import *
 from axis_saas.utils.class_display import get_class_display_for_student, get_class_display_name
 
 @require_tenant_type(['school'])
@@ -130,7 +134,6 @@ def defaulters(request, schema_name, force_mobile=False):
     template = 'mobile/defaulters.html' if force_mobile else 'tenant/defaulters.html'
     return render(request, template, context)
 
-@cache_page(60)
 @require_tenant_type(['school'])
 @require_school_feature('reports')
 def reports(request, schema_name, force_mobile=False):
@@ -144,11 +147,23 @@ def reports(request, schema_name, force_mobile=False):
     page_num = request.GET.get('page', 1)
     if quick_filter == 'today':
         start_date = end_date = today
+    elif quick_filter == 'yesterday':
+        start_date = end_date = today - timedelta(days=1)
     elif quick_filter == 'week':
         start_date = today - timedelta(days=today.weekday())
-        end_date = start_date + timedelta(days=6)
+        end_date = today
+    elif quick_filter == 'last7days':
+        start_date = today - timedelta(days=6)
+        end_date = today
+    elif quick_filter == 'last30days':
+        start_date = today - timedelta(days=29)
+        end_date = today
     elif quick_filter == 'month':
         start_date = today.replace(day=1)
+        end_date = today
+    elif quick_filter == 'quarter':
+        quarter_month = ((today.month - 1) // 3) * 3 + 1
+        start_date = today.replace(month=quarter_month, day=1)
         end_date = today
     elif quick_filter == 'year':
         start_date = today.replace(month=1, day=1)
@@ -178,6 +193,27 @@ def reports(request, schema_name, force_mobile=False):
         payments_qs = PaymentTransaction.objects.filter(payment_date__gte=start_date, payment_date__lte=end_date)
         if search_q:
             payments_qs = payments_qs.filter(Q(receipt_number__icontains=search_q) | Q(student__name__icontains=search_q) | Q(student__roll_number__icontains=search_q))
+
+        if request.GET.get('format') == 'csv':
+            response = HttpResponse(content_type='text/csv; charset=utf-8')
+            response['Content-Disposition'] = f'attachment; filename="collection-{start_date}-{end_date}.csv"'
+            response.write('\ufeff')
+            writer = csv.writer(response)
+            writer.writerow(['Receipt', 'Student', 'Roll number', 'Grade', 'Section', 'Amount', 'Date', 'Payment mode', 'Collected by', 'Remarks'])
+            for payment in payments_qs.select_related('student').order_by('-payment_date', '-id').iterator(chunk_size=500):
+                cells = [
+                    payment.receipt_number, payment.student.name,
+                    payment.student.roll_number, payment.student.grade,
+                    payment.student.section, payment.amount, payment.payment_date,
+                    payment.get_payment_mode_display(), payment.created_by,
+                    payment.remarks,
+                ]
+                writer.writerow([
+                    "'" + str(value) if str(value or '').startswith(('=', '+', '-', '@', '\t', '\r')) else value
+                    for value in cells
+                ])
+            return response
+
         paginator = Paginator(payments_qs.order_by('-payment_date'), 15)
         payments_page = paginator.get_page(page_num)
         total_collection = payments_qs.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
@@ -221,6 +257,147 @@ def reports(request, schema_name, force_mobile=False):
             days_overdue = (timezone.localdate() - oldest_due.due_date).days if oldest_due and oldest_due.due_date < timezone.localdate() else 0
             defaulters_data.append({'student': student, 'pending_amount': pending, 'fee_pending': pending, 'days_overdue': days_overdue})
 
+        student_status_counts = {
+            row['status']: row['count']
+            for row in Student.objects.values('status').annotate(count=Count('id'))
+        }
+        student_attendance = StudentAttendance.objects.filter(date__range=(start_date, end_date))
+        student_attendance_totals = student_attendance.aggregate(
+            total=Count('id'),
+            present=Count('id', filter=Q(status='present')),
+            late=Count('id', filter=Q(status='late')),
+            half_day=Count('id', filter=Q(status='half_day')),
+            absent=Count('id', filter=Q(status='absent')),
+            excused=Count('id', filter=Q(status='excused')),
+        )
+        student_attendance_denominator = sum(
+            student_attendance_totals[key] for key in ('present', 'late', 'half_day', 'absent')
+        )
+        student_attendance_totals['rate'] = round(
+            (student_attendance_totals['present'] + student_attendance_totals['late'] + student_attendance_totals['half_day'])
+            / student_attendance_denominator * 100, 1
+        ) if student_attendance_denominator else 0
+
+        staff_attendance = StaffAttendance.objects.filter(date__range=(start_date, end_date))
+        staff_attendance_totals = staff_attendance.aggregate(
+            total=Count('id'),
+            present=Count('id', filter=Q(status='present')),
+            late=Count('id', filter=Q(status='late')),
+            half_day=Count('id', filter=Q(status='half_day')),
+            absent=Count('id', filter=Q(status='absent')),
+            on_leave=Count('id', filter=Q(status='on_leave')),
+        )
+        staff_attendance_denominator = sum(
+            staff_attendance_totals[key] for key in ('present', 'late', 'half_day', 'absent')
+        )
+        staff_attendance_totals['rate'] = round(
+            (staff_attendance_totals['present'] + staff_attendance_totals['late'] + staff_attendance_totals['half_day'])
+            / staff_attendance_denominator * 100, 1
+        ) if staff_attendance_denominator else 0
+        most_absent_staff = list(
+            staff_attendance.filter(status='absent')
+            .values('staff_id', 'staff__full_name', 'staff__job_title')
+            .annotate(absences=Count('id')).order_by('-absences')[:8]
+        )
+
+        leave_requests = LeaveRequest.objects.filter(created_at__date__range=(start_date, end_date))
+        leave_status_counts = {
+            row['status']: row['count']
+            for row in leave_requests.values('status').annotate(count=Count('id'))
+        }
+        recent_leave_requests = leave_requests.select_related('staff').order_by('-created_at')[:8]
+        student_leave_requests = StudentLeave.objects.filter(created_at__date__range=(start_date, end_date))
+        student_leave_counts = {
+            row['status']: row['count']
+            for row in student_leave_requests.values('status').annotate(count=Count('id'))
+        }
+        recent_student_leaves = student_leave_requests.select_related('student').order_by('-created_at')[:8]
+        most_absent_students = list(
+            student_attendance.filter(status='absent')
+            .values('student_id', 'student__name', 'student__grade', 'student__section')
+            .annotate(absences=Count('id')).order_by('-absences')[:8]
+        )
+
+        products = Product.objects.select_related('category')
+        inventory_totals = products.aggregate(
+            products=Count('id'),
+            units=Sum('quantity'),
+            stock_value=Sum(ExpressionWrapper(
+                F('quantity') * F('selling_price'),
+                output_field=DecimalField(max_digits=14, decimal_places=2),
+            )),
+        )
+        inventory_totals['units'] = inventory_totals['units'] or 0
+        inventory_totals['stock_value'] = inventory_totals['stock_value'] or Decimal('0')
+        low_stock_products = products.filter(quantity__lte=5).order_by('quantity', 'name')[:12]
+        sales = SaleItem.objects.filter(payment__payment_date__range=(start_date, end_date))
+        sales_totals = sales.aggregate(
+            revenue=Sum('line_total'),
+            units=Sum('quantity'),
+            lines=Count('id'),
+        )
+        sales_totals['revenue'] = sales_totals['revenue'] or Decimal('0')
+        sales_totals['units'] = sales_totals['units'] or 0
+        sales_totals['lines'] = sales_totals['lines'] or 0
+        top_selling_products = list(
+            sales.values('name').annotate(units=Sum('quantity'), revenue=Sum('line_total'))
+            .order_by('-revenue')[:5]
+        )
+
+        attendance_audits = AttendanceAuditLog.objects.filter(
+            changed_at__date__range=(start_date, end_date)
+        ).select_related('changed_by').order_by('-changed_at')[:12]
+        generation_logs = ManualGenerationLog.objects.filter(
+            generated_at__date__range=(start_date, end_date)
+        )[:8]
+
+        staff_members = list(Staff.objects.only(
+            'id', 'staff_id', 'full_name', 'job_title', 'department', 'status',
+        ).order_by('full_name'))
+        staff_ids = [staff.pk for staff in staff_members]
+        with schema_context('public'):
+            credentials = {
+                credential.staff_id: credential.last_login
+                for credential in StaffCredential.objects.filter(
+                    schema_name=schema_name, staff_id__in=staff_ids,
+                ).only('staff_id', 'last_login')
+            }
+        online_cache_keys = {
+            f'staff_online:{schema_name}:{staff.pk}': staff.pk
+            for staff in staff_members
+        }
+        try:
+            active_staff_sessions = cache.get_many(online_cache_keys)
+        except Exception:
+            active_staff_sessions = {}
+        staff_activity = [
+            {
+                'staff': staff,
+                'is_online': bool(active_staff_sessions.get(
+                    f'staff_online:{schema_name}:{staff.pk}'
+                )),
+                'last_login': credentials.get(staff.pk),
+            }
+            for staff in staff_members
+        ]
+        staff_activity.sort(
+            key=lambda item: (
+                item['is_online'],
+                item['last_login'].timestamp() if item['last_login'] else 0,
+            ),
+            reverse=True,
+        )
+        online_staff_count = sum(item['is_online'] for item in staff_activity)
+        online_staff_activity = [item for item in staff_activity if item['is_online']]
+        recent_offline_staff_activity = [item for item in staff_activity if not item['is_online']][:20]
+        recent_staff_activity = online_staff_activity + recent_offline_staff_activity
+
+        academic_totals = {
+            'classes': SchoolClass.objects.count(),
+            'subjects': Subject.objects.count(),
+            'timetable_entries': TimetableEntry.objects.count(),
+        }
+
     # ---- add display_class to each defaulter ----
     for item in defaulters_data:
         student = item['student']
@@ -247,9 +424,29 @@ def reports(request, schema_name, force_mobile=False):
         'total': total_collection,
         'payment_count': payment_count,
         'logo_url': tenant.school_logo.url if tenant.school_logo else None,
-        'total_collection_all': total_collection_all
+        'total_collection_all': total_collection_all,
+        'student_status_counts': student_status_counts,
+        'student_count': sum(student_status_counts.values()),
+        'student_attendance': student_attendance_totals,
+        'staff_attendance': staff_attendance_totals,
+        'most_absent_staff': most_absent_staff,
+        'leave_status_counts': leave_status_counts,
+        'recent_leave_requests': recent_leave_requests,
+        'student_leave_counts': student_leave_counts,
+        'recent_student_leaves': recent_student_leaves,
+        'most_absent_students': most_absent_students,
+        'inventory': inventory_totals,
+        'low_stock_products': low_stock_products,
+        'sales': sales_totals,
+        'top_selling_products': top_selling_products,
+        'attendance_audits': attendance_audits,
+        'generation_logs': generation_logs,
+        'staff_activity': recent_staff_activity,
+        'online_staff_count': online_staff_count,
+        'staff_count': len(staff_members),
+        'academic_totals': academic_totals,
     }
-    template = 'mobile/reports.html' if force_mobile else 'tenant/reports.html'
+    template = 'tenant/reports/mobile.html' if force_mobile else 'tenant/reports/overview.html'
     return render(request, template, context)
 
 @require_tenant_type(['school'])
