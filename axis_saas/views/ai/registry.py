@@ -1,6 +1,7 @@
 """Allow-listed, feature-gated assistant tool registry."""
 
 import json
+from copy import deepcopy
 from datetime import date
 
 from django.conf import settings
@@ -19,9 +20,44 @@ from .tools import (
     stock_summary,
     student_fee_balance,
 )
+from .query import DATASETS, FILTER_OPERATORS, OPERATIONS, query_school_data
 
 
 TOOL_DEFINITIONS = {
+    'query_school_data': {
+        'feature': 'ai_assistant',
+            'description': 'Query school records using the listed tenant datasets and fields. Use count, sum, average, group_count, or list. Aggregates may cover all-time data or use date filters. Large list queries require inclusive date bounds of at most 366 days and may be paged with offset. Never infer data that was not returned.',
+        'parameters': {
+            'type': 'object', 'properties': {
+                'dataset': {'type': 'string', 'enum': sorted(DATASETS)},
+                'operation': {'type': 'string', 'enum': sorted(OPERATIONS)},
+                'filters': {
+                    'type': 'array', 'maxItems': 8,
+                    'items': {'type': 'object', 'properties': {
+                        'field': {'type': 'string', 'enum': sorted({
+                            field for dataset in DATASETS.values() for field in dataset['fields']
+                        })},
+                        'operator': {'type': 'string', 'enum': sorted(FILTER_OPERATORS)},
+                        'value': {'type': 'string', 'maxLength': 120},
+                    }, 'required': ['field', 'operator', 'value'], 'additionalProperties': False},
+                },
+                'metric': {'type': 'string', 'enum': sorted({
+                    field for dataset in DATASETS.values() for field in dataset['metrics']
+                })},
+                'group_by': {'type': 'string', 'enum': sorted({
+                    field for dataset in DATASETS.values() for field in dataset['fields']
+                })},
+                'fields': {
+                    'type': 'array', 'maxItems': 8,
+                    'items': {'type': 'string', 'enum': sorted({
+                        field for dataset in DATASETS.values() for field in dataset['fields']
+                    })},
+                },
+                'limit': {'type': 'integer', 'minimum': 1, 'maximum': 25},
+                'offset': {'type': 'integer', 'minimum': 0, 'maximum': 1000000},
+            }, 'required': ['dataset', 'operation'], 'additionalProperties': False,
+        },
+    },
     'search_students': {
         'feature': 'students',
         'description': 'Search this school only for students by name or exact roll number. Use for a student-name query or request for student records.',
@@ -137,14 +173,64 @@ TOOL_DEFINITIONS = {
 }
 
 
-def enabled_tool_definitions(tenant):
+def _query_datasets_for_tenant(tenant):
+    return [
+        name for name, dataset in DATASETS.items()
+        if all(tenant.is_feature_enabled(feature, 'desktop') for feature in dataset['features'])
+    ]
+
+
+def enabled_tool_definitions(tenant, *, consent_confirmed=False):
     if not getattr(settings, 'AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER', False):
         return []
-    if not tenant.is_feature_enabled('ai_assistant_data_sharing', 'desktop'):
+    if not consent_confirmed:
         return []
     definitions = []
     for name, definition in TOOL_DEFINITIONS.items():
+        if name == 'query_school_data':
+            if not tenant.is_feature_enabled('ai_assistant', 'desktop'):
+                continue
+            available_datasets = _query_datasets_for_tenant(tenant)
+            if not available_datasets:
+                continue
+            scoped = deepcopy(definition)
+            scoped['parameters']['properties']['dataset']['enum'] = available_datasets
+            allowed_fields = sorted({
+                field for dataset_name in available_datasets
+                for field in DATASETS[dataset_name]['fields']
+            })
+            allowed_metrics = sorted({
+                field for dataset_name in available_datasets
+                for field in DATASETS[dataset_name]['metrics']
+            })
+            scoped['parameters']['properties']['filters']['items']['properties']['field']['enum'] = allowed_fields
+            scoped['parameters']['properties']['group_by']['enum'] = allowed_fields
+            scoped['parameters']['properties']['fields']['items']['enum'] = allowed_fields
+            scoped['parameters']['properties']['metric']['enum'] = allowed_metrics
+            description = []
+            for dataset_name in available_datasets:
+                dataset = DATASETS[dataset_name]
+                description.append(
+                    f"{dataset_name} ({', '.join(dataset['fields'])}); "
+                    f"sum/average metrics: {', '.join(dataset['metrics']) or 'none'}"
+                    + (f"; {dataset['guidance']}" if dataset.get('guidance') else '')
+                )
+            scoped['description'] += ' Available datasets and safe fields: ' + '; '.join(description) + '.'
+            definitions.append({
+                'type': 'function',
+                'function': {
+                    'name': name,
+                    'description': scoped['description'],
+                    'parameters': scoped['parameters'],
+                },
+            })
+            continue
         if not tenant.is_feature_enabled(definition['feature'], 'desktop'):
+            continue
+        if definition.get('required_features') and not all(
+            tenant.is_feature_enabled(feature, 'desktop')
+            for feature in definition['required_features']
+        ):
             continue
         if definition.get('extra_features') and not any(
             tenant.is_feature_enabled(feature, 'desktop')
@@ -199,17 +285,34 @@ def _date_range_arguments(arguments, subject):
     return start_date, end_date
 
 
-def execute_tool(name, raw_arguments, *, tenant, schema_name, roman_urdu=False, pages=()):
+def execute_tool(
+    name,
+    raw_arguments,
+    *,
+    tenant,
+    schema_name,
+    roman_urdu=False,
+    pages=(),
+    consent_confirmed=False,
+):
     """Execute one allow-listed tool against the resolved tenant schema."""
     if not getattr(settings, 'AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER', False):
         raise PermissionError('External school-data tools are disabled by deployment policy.')
-    if not tenant.is_feature_enabled('ai_assistant_data_sharing', 'desktop'):
-        raise PermissionError('This school has not enabled AI provider data sharing.')
+    if not consent_confirmed:
+        raise PermissionError('The school administrator has not consented for this chat.')
     if name not in TOOL_DEFINITIONS:
         raise ValueError('Unknown assistant tool')
     definition = TOOL_DEFINITIONS[name]
     if not tenant.is_feature_enabled(definition['feature'], 'desktop'):
         raise PermissionError('This school feature is not enabled.')
+    if definition.get('required_features') and not all(
+        tenant.is_feature_enabled(feature, 'desktop')
+        for feature in definition['required_features']
+    ):
+        raise PermissionError('This school feature is not enabled.')
+
+    if not isinstance(raw_arguments, str) or len(raw_arguments) > 12000:
+        raise ValueError('Tool arguments must be text no longer than 12000 characters.')
     if definition.get('extra_features') and not any(
         tenant.is_feature_enabled(feature, 'desktop')
         for feature in definition['extra_features']
@@ -222,6 +325,25 @@ def execute_tool(name, raw_arguments, *, tenant, schema_name, roman_urdu=False, 
         raise ValueError('Tool arguments were not valid JSON') from exc
     if not isinstance(arguments, dict):
         raise ValueError('Tool arguments must be an object')
+
+    if name == 'query_school_data':
+        dataset_name = arguments.get('dataset')
+        if dataset_name not in DATASETS:
+            raise ValueError('Unknown school data dataset.')
+        dataset = DATASETS[dataset_name]
+        if not all(tenant.is_feature_enabled(feature, 'desktop') for feature in dataset['features']):
+            raise PermissionError('This school module is not enabled.')
+        return query_school_data(
+            schema_name,
+            dataset_name,
+            arguments.get('operation'),
+            filters=arguments.get('filters'),
+            metric=arguments.get('metric', ''),
+            group_by=arguments.get('group_by', ''),
+            fields=arguments.get('fields'),
+            limit=arguments.get('limit', 20),
+            offset=arguments.get('offset', 0),
+        )
 
     if name == 'search_students':
         return lookup_students(

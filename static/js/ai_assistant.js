@@ -9,9 +9,78 @@
     const input = document.getElementById('axis-ai-input');
     const sendButton = document.getElementById('axis-ai-send');
     const messages = document.getElementById('axis-ai-messages');
+    const consentGate = document.getElementById('axis-ai-consent');
+    const consentCheckbox = document.getElementById('axis-ai-consent-checkbox');
+    const allowDataButton = document.getElementById('axis-ai-consent-allow');
+    const privateModeButton = document.getElementById('axis-ai-consent-private');
     const endpoint = panel.dataset.endpoint;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let previousFocus = null;
+    let conversationId = null;
+    let providerConsent = false;
+    let chatStarted = false;
+
+    function createConversationId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+        const hex = Array.from({ length: 32 }, function () {
+            return Math.floor(Math.random() * 16).toString(16);
+        });
+        hex[12] = '4';
+        hex[16] = ['8', '9', 'a', 'b'][Math.floor(Math.random() * 4)];
+        const value = hex.join('');
+        return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+    }
+
+    function setChatEnabled(enabled) {
+        input.disabled = !enabled;
+        sendButton.disabled = !enabled;
+        document.querySelectorAll('[data-ai-prompt]').forEach(function (button) {
+            button.disabled = !enabled;
+        });
+    }
+
+    function beginConversation() {
+        conversationId = createConversationId();
+        providerConsent = false;
+        chatStarted = false;
+        consentGate.hidden = false;
+        if (consentCheckbox) consentCheckbox.checked = false;
+        if (allowDataButton) allowDataButton.disabled = true;
+        setChatEnabled(false);
+    }
+
+    function selectPrivacyMode(allowSchoolData) {
+        providerConsent = allowSchoolData;
+        chatStarted = true;
+        consentGate.hidden = true;
+        setChatEnabled(true);
+        input.focus();
+    }
+
+    function endConversation() {
+        const endedConversationId = conversationId;
+        if (endedConversationId) {
+            fetch(endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ action: 'end_chat', conversation_id: endedConversationId })
+            }).catch(function () {});
+        }
+        conversationId = null;
+        providerConsent = false;
+        chatStarted = false;
+        const welcome = messages.querySelector('[data-ai-welcome]');
+        if (welcome) messages.replaceChildren(welcome);
+        setChatEnabled(false);
+    }
 
     function setOpen(open) {
         panel.setAttribute('aria-hidden', String(!open));
@@ -19,8 +88,9 @@
         if (headerTrigger) headerTrigger.setAttribute('aria-expanded', String(open));
         if (open) {
             previousFocus = document.activeElement;
-            input.focus();
+            if (!conversationId) beginConversation();
         } else if (previousFocus && typeof previousFocus.focus === 'function') {
+            endConversation();
             previousFocus.focus();
         }
     }
@@ -55,7 +125,7 @@
 
     async function sendMessage(message) {
         const question = (message || '').trim();
-        if (!question || sendButton.disabled) return;
+        if (!chatStarted || !question || sendButton.disabled) return;
         appendMessage(question, 'user');
         input.value = '';
         sendButton.disabled = true;
@@ -70,7 +140,12 @@
                     'X-CSRFToken': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ message: question, current_path: panel.dataset.currentPath })
+                body: JSON.stringify({
+                    message: question,
+                    current_path: panel.dataset.currentPath,
+                    conversation_id: conversationId,
+                    confirm_school_data_sharing: providerConsent
+                })
             });
             const result = await response.json();
             pending.remove();
@@ -95,6 +170,15 @@
         });
     });
     closeButton.addEventListener('click', function () { setOpen(false); });
+    if (consentCheckbox && allowDataButton) {
+        consentCheckbox.addEventListener('change', function () {
+            allowDataButton.disabled = !consentCheckbox.checked;
+        });
+        allowDataButton.addEventListener('click', function () {
+            if (consentCheckbox.checked) selectPrivacyMode(true);
+        });
+    }
+    privateModeButton.addEventListener('click', function () { selectPrivacyMode(false); });
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && panel.getAttribute('aria-hidden') === 'false') setOpen(false);
     });

@@ -95,6 +95,35 @@ def lookup_students(schema_name, name, roman_urdu=True, limit=8):
     return {'reply': reply, 'actions': actions}
 
 
+def lookup_students_by_parent_name(schema_name, parent_name, roman_urdu=True, limit=8):
+    parent_name = (parent_name or '').strip()[:80]
+    limit = max(1, min(int(limit), 10))
+    if len(parent_name) < 2:
+        return {
+            'reply': 'Walid/guardian ka naam thora aur specific likhein.' if roman_urdu else 'Please enter at least two characters of the parent or guardian name.',
+            'actions': [],
+        }
+    with schema_context(schema_name):
+        matches = Student.objects.filter(
+            father_name__icontains=parent_name,
+        ).order_by('name', 'roll_number')
+        total = matches.count()
+        students = list(matches[:limit])
+    actions = [{
+        'label': f'{student.name} · {student.roll_number}',
+        'detail': f'{student.grade} · {student.section}',
+        'url': reverse('student_profile', kwargs={
+            'schema_name': schema_name,
+            'student_id': student.pk,
+        }),
+    } for student in students]
+    if roman_urdu:
+        reply = f'{parent_name} ke naam se {total} student record(s) mile.'
+    else:
+        reply = f'Found {total} student record(s) with parent/guardian name matching “{parent_name}”.'
+    return {'reply': reply, 'actions': actions}
+
+
 def count_students(schema_name, roman_urdu=True, grade='', section='', status=''):
     if status and status not in {'active', 'suspended', 'graduated'}:
         raise ValueError('Unknown student status.')
@@ -131,6 +160,36 @@ def count_students(schema_name, roman_urdu=True, grade='', section='', status=''
             'url': reverse('student_list', kwargs={'schema_name': schema_name}),
         }],
     }
+
+
+def class_pending_fee_summary(schema_name, grade, section, roman_urdu=True):
+    grade = (grade or '').strip()[:50]
+    section = (section or '').strip()[:50]
+    grade_names = (grade, f'Class {grade}', f'Grade {grade}')
+    with schema_context(schema_name):
+        students = Student.objects.filter(section__iexact=section).filter(
+            Q(grade__iexact=grade)
+            | Q(school_class__name__iexact=grade_names[0])
+            | Q(school_class__name__iexact=grade_names[1])
+            | Q(school_class__name__iexact=grade_names[2])
+        )
+        balances = get_student_pending_queryset(students).filter(pending_amount__gt=0)
+        totals = balances.aggregate(
+            students=Count('pk'),
+            pending=Sum('pending_amount'),
+        )
+    pending = totals['pending'] or 0
+    if roman_urdu:
+        reply = (
+            f'{grade} section {section} ka current total pending fee {pending:,.2f} hai; '
+            f'{totals["students"]} students ka balance baqi hai.'
+        )
+    else:
+        reply = (
+            f'Current total pending fees for grade {grade}, section {section}: {pending:,.2f} '
+            f'across {totals["students"]} students with a remaining balance.'
+        )
+    return {'reply': reply, 'actions': []}
 
 
 def fee_collection_summary(schema_name, start_date, end_date, roman_urdu=True):
