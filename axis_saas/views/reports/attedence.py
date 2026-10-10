@@ -2,6 +2,7 @@
 
 import csv
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 from django.core.paginator import Paginator
 from django.db.models import CharField, Count, F, Q
@@ -53,6 +54,14 @@ def _safe_csv_cell(value):
     if value.startswith(('=', '+', '-', '@', '\t', '\r')):
         return "'" + value
     return value
+
+
+def _prepare_record_marker_fallback(records):
+    for record in records:
+        if record.teacher_id is None:
+            record._state.fields_cache['teacher'] = (
+                record.marked_by or SimpleNamespace(full_name='—')
+            )
 
 
 @require_http_methods(['GET'])
@@ -289,6 +298,7 @@ def attedence_report(request, schema_name):
             )
         record_paginator = Paginator(detail_records.order_by('-date', 'student__roll_number', 'period_order'), 30)
         record_page = record_paginator.get_page(request.GET.get('record_page', 1))
+        _prepare_record_marker_fallback(record_page.object_list)
 
         if request.GET.get('format') == 'csv':
             response = HttpResponse(content_type='text/csv; charset=utf-8')
