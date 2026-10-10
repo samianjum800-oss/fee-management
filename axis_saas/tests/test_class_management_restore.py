@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django.test import Client, TestCase
 from django_tenants.utils import schema_context
 
 from axis_saas.models import (
     ClassTimetableAssignment,
+    FeeStructure,
     PeriodTeacherAssignment,
     PeriodsTimetable,
     ScheduleLabel,
@@ -24,7 +27,7 @@ class ClassManagementRestoreTests(TestCase):
             admin_username="admin",
             admin_password="admin123",
             tenant_type="single_small_school",
-            enabled_features=["class_management", "classes_management"],
+            enabled_features=["class_management", "classes_management", "fee_structure"],
         )
         connection.set_schema_to_public()
 
@@ -139,6 +142,47 @@ class ClassManagementRestoreTests(TestCase):
             "new URLSearchParams(window.location.search).get('show_timetable') === '1'",
         )
 
+    def test_fee_modal_uses_fee_structure_backend_and_shows_class_status(self):
+        with schema_context(self.tenant.schema_name):
+            school_class = SchoolClass.objects.create(name="5", section="A")
+
+        response = self.client.post(
+            f"/portal/{self.tenant.schema_name}/fee/structure/",
+            {
+                "class_id": str(school_class.pk),
+                "monthly_fee": "1250.50",
+                "return_to": "classes_management",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("open_fee_structure=1", response["Location"])
+
+        with schema_context(self.tenant.schema_name):
+            fee = FeeStructure.objects.get(grade="5 - A")
+            self.assertEqual(fee.monthly_fee, Decimal("1250.50"))
+
+        edit_response = self.client.post(
+            f"/portal/{self.tenant.schema_name}/fee/structure/",
+            {
+                "class_id": str(school_class.pk),
+                "monthly_fee": "1600.00",
+                "return_to": "classes_management",
+            },
+        )
+        self.assertEqual(edit_response.status_code, 302)
+        with schema_context(self.tenant.schema_name):
+            self.assertEqual(FeeStructure.objects.get(grade="5 - A").pk, fee.pk)
+            self.assertEqual(
+                FeeStructure.objects.get(grade="5 - A").monthly_fee,
+                Decimal("1600.00"),
+            )
+
+        page_response = self.client.get(f"/portal/{self.tenant.schema_name}/my-classes/")
+        self.assertEqual(page_response.status_code, 200)
+        self.assertContains(page_response, "Fee set")
+        self.assertContains(page_response, "View class")
+        self.assertContains(page_response, "5 - A")
+
     def test_readding_wing_class_restores_the_class_in_its_original_wing(self):
         self.tenant.tenant_type = "wing_school"
         self.tenant.save(update_fields=["tenant_type"])
@@ -171,7 +215,29 @@ class ClassManagementRestoreTests(TestCase):
             f"/portal/{self.tenant.schema_name}/my-classes/"
         )
         self.assertEqual(classes_response.status_code, 200)
+        self.assertContains(classes_response, "Campus Management")
+        self.assertContains(classes_response, "Campus management")
         self.assertContains(
             classes_response,
             f"/portal/{self.tenant.schema_name}/my-classes/{school_class.pk}/?show_timetable=1",
         )
+
+        campus_response = self.client.post(
+            f"/portal/{self.tenant.schema_name}/settings/",
+            {
+                "return_to": "classes_management",
+                "category_action": "add",
+                "main_category": "South",
+                "sub_category": "Junior",
+            },
+        )
+        self.assertEqual(campus_response.status_code, 302)
+        self.assertIn("open_campus_management=1", campus_response["Location"])
+        with schema_context(self.tenant.schema_name):
+            self.assertTrue(
+                WingCategory.objects.filter(
+                    name="Junior",
+                    parent__name="South",
+                    is_active=True,
+                ).exists()
+            )

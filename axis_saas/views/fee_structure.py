@@ -5,6 +5,7 @@ AXIS views – fee_structure module.
 import logging
 import re
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import JsonResponse, Http404
 from django.contrib import messages
 from django.db.models import Sum, Q, Exists, OuterRef, Max
@@ -49,21 +50,40 @@ def fee_structure(request, schema_name):
             monthly_fee = request.POST.get('monthly_fee')
             if class_id and monthly_fee:
                 try:
-                    school_class = SchoolClass.objects.get(id=class_id, is_active=True)
+                    if not class_id.isdecimal():
+                        raise SchoolClass.DoesNotExist
+                    school_class = SchoolClass.objects.get(id=int(class_id), is_active=True)
                     grade = get_fee_structure_grade(school_class, tenant.tenant_type)
-                    FeeStructure.objects.update_or_create(
-                        grade=grade,
-                        defaults={'monthly_fee': monthly_fee},
+                    fee_structure = FeeStructure.objects.filter(grade=grade).first()
+                    form = FeeStructureForm(
+                        {'grade': grade, 'monthly_fee': monthly_fee},
+                        instance=fee_structure,
                     )
-                    Student.objects.filter(grade=grade).update(custom_fee=monthly_fee)
-                    messages.success(request, f'Fee structure for {grade} saved successfully.')
+                    if form.is_valid():
+                        FeeStructure.objects.update_or_create(
+                            grade=grade,
+                            defaults={'monthly_fee': form.cleaned_data['monthly_fee']},
+                        )
+                        Student.objects.filter(grade=grade).update(
+                            custom_fee=form.cleaned_data['monthly_fee']
+                        )
+                        messages.success(request, f'Fee structure for {grade} saved successfully.')
+                    else:
+                        for errors in form.errors.values():
+                            for error in errors:
+                                messages.error(request, error)
                 except SchoolClass.DoesNotExist:
                     messages.error(request, 'Invalid class selected.')
             else:
                 messages.error(request, 'Please select a class and enter a monthly fee.')
             if request.POST.get('return_to') == 'classes_management':
-                query = f'?open_fee_structure=1&edit_fee={class_id}' if class_id else '?open_fee_structure=1'
-                return redirect(f'/portal/{schema_name}/my-classes/{query}')
+                classes_url = reverse('classes_management', kwargs={'schema_name': schema_name})
+                edit_class_id = class_id if class_id and class_id.isdecimal() else ''
+                query = (
+                    f'?open_fee_structure=1&edit_fee={edit_class_id}'
+                    if edit_class_id else '?open_fee_structure=1'
+                )
+                return redirect(f'{classes_url}{query}')
             return redirect('fee_structure', schema_name=schema_name)
 
         # Get existing fee structures

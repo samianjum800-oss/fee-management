@@ -1,0 +1,418 @@
+<style>
+    .class-tools-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.62);
+        backdrop-filter: blur(5px);
+    }
+    .class-tools-overlay.active { display: flex; }
+    .class-tools-panel {
+        width: min(900px, 100%);
+        max-height: min(88vh, 820px);
+        overflow: auto;
+        padding: clamp(1rem, 3vw, 1.8rem);
+        border: 1px solid var(--border);
+        border-radius: 1.15rem;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+        animation: classToolsIn 180ms ease-out;
+    }
+    .class-tools-panel.compact { width: min(560px, 100%); }
+    @keyframes classToolsIn {
+        from { opacity: 0; transform: translateY(12px) scale(.99); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .class-tools-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+    }
+    .class-tools-heading h2 { margin: 0; font-size: 1.35rem; color: var(--text); }
+    .class-tools-heading p { margin: .35rem 0 0; color: var(--muted); font-size: .9rem; }
+    .class-tools-close {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border: 1px solid var(--border);
+        border-radius: .7rem;
+        background: var(--surface-alt);
+        color: var(--text);
+        font-size: 1.35rem;
+        cursor: pointer;
+    }
+    .class-tools-close:hover { border-color: var(--primary); color: var(--primary); }
+    .class-tools-toolbar {
+        display: flex;
+        gap: .7rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+    .class-tools-toolbar input, .class-tools-toolbar select,
+    .class-tools-form input, .class-tools-form select {
+        width: 100%;
+        min-height: 2.7rem;
+        padding: .65rem .8rem;
+        border: 1px solid var(--border);
+        border-radius: .7rem;
+        background: var(--surface-alt);
+        color: var(--text);
+        font: inherit;
+    }
+    .class-tools-toolbar input { flex: 1 1 240px; }
+    .class-tools-toolbar select { flex: 0 1 190px; }
+    .class-tools-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: .85rem; }
+    .class-tools-table { width: 100%; border-collapse: collapse; min-width: 610px; }
+    .class-tools-table th, .class-tools-table td {
+        padding: .8rem .9rem;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: middle;
+    }
+    .class-tools-table th {
+        background: var(--surface-alt);
+        color: var(--muted);
+        font-size: .72rem;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+    .class-tools-table tr:last-child td { border-bottom: 0; }
+    .class-tools-table td:last-child { white-space: nowrap; }
+    .class-tools-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: .28rem .55rem;
+        border-radius: 999px;
+        font-size: .75rem;
+        font-weight: 700;
+    }
+    .class-tools-badge.set { background: rgba(16, 185, 129, .12); color: #047857; }
+    .class-tools-badge.missing { background: rgba(245, 158, 11, .14); color: #b45309; }
+    .class-tools-link, .class-tools-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2rem;
+        padding: .4rem .65rem;
+        border: 1px solid var(--border);
+        border-radius: .55rem;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+        font-size: .78rem;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .class-tools-link:hover, .class-tools-action:hover { border-color: var(--primary); color: var(--primary); }
+    .class-tools-action.primary {
+        border-color: transparent;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #fff;
+    }
+    .class-tools-form { display: grid; gap: 1rem; }
+    .class-tools-form label { display: grid; gap: .45rem; font-size: .86rem; font-weight: 700; }
+    .class-tools-form-actions { display: flex; justify-content: flex-end; gap: .65rem; flex-wrap: wrap; }
+    .campus-category-list { display: grid; gap: .6rem; margin-top: 1rem; }
+    .campus-category-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .8rem .9rem;
+        border: 1px solid var(--border);
+        border-radius: .75rem;
+        background: var(--surface-alt);
+    }
+    .campus-category-item small { display: block; margin-top: .15rem; color: var(--muted); }
+    @media (max-width: 640px) {
+        .class-tools-overlay { padding: .55rem; align-items: flex-end; }
+        .class-tools-panel { max-height: 92vh; border-radius: 1rem 1rem .7rem .7rem; }
+        .class-tools-heading h2 { font-size: 1.15rem; }
+        .class-tools-form-actions > * { flex: 1; }
+    }
+</style>
+
+{% if fee_structure_enabled %}
+<div class="class-tools-overlay" id="feeStructuresModal" aria-hidden="true">
+    <section class="class-tools-panel" role="dialog" aria-modal="true" aria-labelledby="feeStructuresTitle">
+        <div class="class-tools-heading">
+            <div>
+                <h2 id="feeStructuresTitle">Class fee structures</h2>
+                <p>Check each class's monthly fee, update it, or open its class details.</p>
+            </div>
+            <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
+        </div>
+        <div class="class-tools-toolbar">
+            <input type="search" id="feeClassSearch" placeholder="Search a class or campus">
+            <select id="feeClassFilter" aria-label="Filter fee structures">
+                <option value="all">All classes</option>
+                <option value="set">Fee set</option>
+                <option value="missing">Fee not set</option>
+            </select>
+        </div>
+        <div class="class-tools-table-wrap">
+            <table class="class-tools-table">
+                <thead>
+                    <tr><th>Class</th><th>Monthly fee</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="feeClassRows">
+                    {% for cls in fee_classes %}
+                    <tr class="fee-class-row"
+                        data-search="{{ cls.display_name|lower }}"
+                        data-status="{% if cls.fee_structure %}set{% else %}missing{% endif %}">
+                        <td><strong>{{ cls.display_name }}</strong></td>
+                        <td>{% if cls.fee_structure %}₹{{ cls.fee_structure.monthly_fee|floatformat:2 }}{% else %}—{% endif %}</td>
+                        <td>
+                            {% if cls.fee_structure %}
+                            <span class="class-tools-badge set">Fee set</span>
+                            {% else %}
+                            <span class="class-tools-badge missing">Not set</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="class-tools-action fee-edit-button"
+                                    data-class-id="{{ cls.id }}"
+                                    data-class-name="{{ cls.display_name|escape }}"
+                                    data-monthly-fee="{% if cls.fee_structure %}{{ cls.fee_structure.monthly_fee }}{% endif %}">
+                                {% if cls.fee_structure %}Edit fee{% else %}Set fee{% endif %}
+                            </button>
+                            <a class="class-tools-link" href="{% url 'class_detailed' schema_name=tenant.schema_name class_id=cls.id %}">View class</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center;color:var(--muted);">No active classes yet.</td></tr>
+                    {% endfor %}
+                    <tr id="feeClassNoResults" hidden>
+                        <td colspan="4" style="text-align:center;color:var(--muted);">No classes match this filter.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<div class="class-tools-overlay" id="feeEditModal" aria-hidden="true">
+    <section class="class-tools-panel compact" role="dialog" aria-modal="true" aria-labelledby="feeEditTitle">
+        <div class="class-tools-heading">
+            <div>
+                <h2 id="feeEditTitle">Set monthly fee</h2>
+                <p id="feeEditDescription">Choose a class and enter its monthly fee.</p>
+            </div>
+            <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
+        </div>
+        <form method="post" action="{% url 'fee_structure' schema_name=tenant.schema_name %}" class="class-tools-form">
+            {% csrf_token %}
+            <input type="hidden" name="return_to" value="classes_management">
+            <label>
+                Class
+                <select name="class_id" id="feeEditClass" required>
+                    {% for cls in fee_classes %}
+                    <option value="{{ cls.id }}">{{ cls.display_name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Monthly fee (₹)
+                <input type="number" name="monthly_fee" id="feeEditAmount" min="0" step="0.01" required>
+            </label>
+            <div class="class-tools-form-actions">
+                <button type="button" class="class-tools-link" id="cancelFeeEdit">Cancel</button>
+                <button type="submit" class="class-tools-action primary">Save fee structure</button>
+            </div>
+        </form>
+    </section>
+</div>
+{% endif %}
+
+{% if campus_management_enabled %}
+<div class="class-tools-overlay" id="campusManagementModal" aria-hidden="true">
+    <section class="class-tools-panel compact" role="dialog" aria-modal="true" aria-labelledby="campusManagementTitle">
+        <div class="class-tools-heading">
+            <div>
+                <h2 id="campusManagementTitle">Campus management</h2>
+                <p>Add a campus or wing, or edit an existing category.</p>
+            </div>
+            <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
+        </div>
+        <button type="button" class="class-tools-action primary" id="addCampusCategory">+ Add campus / wing</button>
+        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}"
+              class="class-tools-form" id="campusCategoryEditor" hidden style="margin-top:1rem;">
+            {% csrf_token %}
+            <input type="hidden" name="return_to" value="classes_management">
+            <input type="hidden" name="category_action" value="add" id="campusCategoryAction">
+            <input type="hidden" name="category_id" id="campusCategoryId">
+            <label>
+                Campus
+                <input type="text" name="main_category" id="campusMainCategory" maxlength="100" required placeholder="e.g. Main Campus">
+            </label>
+            <label>
+                Wing (optional)
+                <input type="text" name="sub_category" id="campusSubCategory" maxlength="100" placeholder="e.g. Girls Wing">
+            </label>
+            <div class="class-tools-form-actions">
+                <button type="button" class="class-tools-link" id="cancelCampusEdit">Cancel</button>
+                <button type="submit" class="class-tools-action primary" id="campusCategorySubmit">Add campus / wing</button>
+            </div>
+        </form>
+        <div class="campus-category-list">
+            {% for campus in wing_parents %}
+                {% with children=campus.active_children %}
+                    {% if children %}
+                        {% for wing in children %}
+                            {% if wing.is_active %}
+                            <div class="campus-category-item">
+                                <span><strong>{{ campus.name }}</strong><small>{{ wing.name }}</small></span>
+                                <button type="button" class="class-tools-action campus-edit-button"
+                                        data-id="{{ wing.id }}" data-main="{{ campus.name|escape }}"
+                                        data-sub="{{ wing.name|escape }}">Edit</button>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% elif campus.is_active %}
+                    <div class="campus-category-item">
+                        <span><strong>{{ campus.name }}</strong><small>Campus</small></span>
+                        <button type="button" class="class-tools-action campus-edit-button"
+                                data-id="{{ campus.id }}" data-main="{{ campus.name|escape }}" data-sub="">Edit</button>
+                    </div>
+                    {% endif %}
+                {% endwith %}
+            {% empty %}
+            <p style="margin:.5rem 0;color:var(--muted);">No campuses or wings configured yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const feeList = document.getElementById('feeStructuresModal');
+    const feeEdit = document.getElementById('feeEditModal');
+    const campusModal = document.getElementById('campusManagementModal');
+    const show = (modal) => {
+        if (!modal) return;
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    };
+    const hide = (modal) => {
+        if (!modal) return;
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    };
+
+    const openFees = document.getElementById('openFeeStructures');
+    if (openFees) openFees.addEventListener('click', () => show(feeList));
+    const openCampus = document.getElementById('openCampusManagement');
+    if (openCampus) openCampus.addEventListener('click', () => show(campusModal));
+
+    document.querySelectorAll('[data-close-tools]').forEach((button) => {
+        button.addEventListener('click', () => {
+            hide(button.closest('.class-tools-overlay'));
+            hide(feeEdit);
+        });
+    });
+    document.querySelectorAll('.class-tools-overlay').forEach((overlay) => {
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) hide(overlay);
+        });
+    });
+
+    const feeSearch = document.getElementById('feeClassSearch');
+    const feeFilter = document.getElementById('feeClassFilter');
+    const feeRows = Array.from(document.querySelectorAll('.fee-class-row'));
+    const noFeeRows = document.getElementById('feeClassNoResults');
+    function filterFeeRows() {
+        if (!feeRows.length) return;
+        const query = (feeSearch.value || '').trim().toLocaleLowerCase();
+        const status = feeFilter.value;
+        let visible = 0;
+        feeRows.forEach((row) => {
+            const matches = row.dataset.search.includes(query)
+                && (status === 'all' || row.dataset.status === status);
+            row.hidden = !matches;
+            if (matches) visible++;
+        });
+        noFeeRows.hidden = visible !== 0;
+    }
+    if (feeSearch) feeSearch.addEventListener('input', filterFeeRows);
+    if (feeFilter) feeFilter.addEventListener('change', filterFeeRows);
+
+    const feeClass = document.getElementById('feeEditClass');
+    const feeAmount = document.getElementById('feeEditAmount');
+    document.querySelectorAll('.fee-edit-button').forEach((button) => {
+        button.addEventListener('click', () => {
+            feeClass.value = button.dataset.classId;
+            feeAmount.value = button.dataset.monthlyFee || '';
+            document.getElementById('feeEditTitle').textContent =
+                button.dataset.monthlyFee ? 'Edit monthly fee' : 'Set monthly fee';
+            document.getElementById('feeEditDescription').textContent = button.dataset.className;
+            show(feeEdit);
+        });
+    });
+    const cancelFeeEdit = document.getElementById('cancelFeeEdit');
+    if (cancelFeeEdit) cancelFeeEdit.addEventListener('click', () => hide(feeEdit));
+
+    const editor = document.getElementById('campusCategoryEditor');
+    const campusAction = document.getElementById('campusCategoryAction');
+    const campusId = document.getElementById('campusCategoryId');
+    const campusMain = document.getElementById('campusMainCategory');
+    const campusSub = document.getElementById('campusSubCategory');
+    const campusSubmit = document.getElementById('campusCategorySubmit');
+    function editCampus(category) {
+        editor.hidden = false;
+        campusAction.value = category ? 'edit' : 'add';
+        campusId.value = category ? category.id : '';
+        campusMain.value = category ? category.main : '';
+        campusSub.value = category ? category.sub : '';
+        campusSubmit.textContent = category ? 'Save changes' : 'Add campus / wing';
+        campusMain.focus();
+    }
+    const addCampus = document.getElementById('addCampusCategory');
+    if (addCampus) addCampus.addEventListener('click', () => editCampus(null));
+    document.querySelectorAll('.campus-edit-button').forEach((button) => {
+        button.addEventListener('click', () => editCampus({
+            id: button.dataset.id,
+            main: button.dataset.main,
+            sub: button.dataset.sub
+        }));
+    });
+    const cancelCampusEdit = document.getElementById('cancelCampusEdit');
+    if (cancelCampusEdit) cancelCampusEdit.addEventListener('click', () => {
+        editor.hidden = true;
+        editor.reset();
+        campusAction.value = 'add';
+        campusId.value = '';
+        campusSubmit.textContent = 'Add campus / wing';
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('open_fee_structure') === '1') {
+        show(feeList);
+        const editId = params.get('edit_fee');
+        if (editId) {
+            const editButton = document.querySelector(
+                '.fee-edit-button[data-class-id="' + CSS.escape(editId) + '"]'
+            );
+            if (editButton) editButton.click();
+        }
+    }
+    if (params.get('open_campus_management') === '1') show(campusModal);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            hide(feeEdit);
+            hide(feeList);
+            hide(campusModal);
+        }
+    });
+});
+</script>

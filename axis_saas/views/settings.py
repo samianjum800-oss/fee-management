@@ -4,6 +4,7 @@ AXIS views – settings module.
 
 import re
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import JsonResponse, Http404
 from django.contrib import messages
 from django.db.models import Sum, Q, Exists, OuterRef, Max
@@ -77,9 +78,8 @@ def settings(request, schema_name):
                     except IntegrityError:
                         messages.error(request, 'A category with this name already exists under the selected main category.')
             if request.POST.get('return_to') == 'classes_management':
-                return redirect(
-                    f'/portal/{schema_name}/my-classes/?open_campus_management=1'
-                )
+                classes_url = reverse('classes_management', kwargs={'schema_name': schema_name})
+                return redirect(f'{classes_url}?open_campus_management=1')
             return redirect('settings', schema_name=schema_name)
         school_name = request.POST.get('school_name', '').strip()
         if school_name:

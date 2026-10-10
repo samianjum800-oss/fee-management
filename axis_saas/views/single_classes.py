@@ -50,18 +50,27 @@ def _build_context(request, schema_name, tenant):
 
         total_classes = len(classes)
         total_students = Student.objects.filter(status='active').count()
+        fee_classes = list(
+            SchoolClass.objects.filter(is_active=True)
+            .select_related('wing_category')
+            .order_by('name', 'section')
+        )
+        for cls in fee_classes:
+            cls.display_name = get_class_display_name(cls, tenant.tenant_type)
+            cls.fee_grade = get_fee_structure_grade(cls, tenant.tenant_type)
         fee_map = {
             fee.grade: fee
             for fee in FeeStructure.objects.filter(
-                grade__in=[cls.fee_grade for cls in classes]
+                grade__in=[cls.fee_grade for cls in fee_classes]
             )
         }
-        for cls in classes:
+        for cls in fee_classes:
             cls.fee_structure = fee_map.get(cls.fee_grade)
 
     return {
         'tenant': tenant,
         'classes': classes,
+        'fee_classes': fee_classes,
         'sections': sections,
         'search_query': search,
         'selected_section': section_filter,
