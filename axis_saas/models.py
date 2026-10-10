@@ -22,6 +22,7 @@ SCHOOL_FEATURE_CHOICES = [
     ('fee_collection', 'Fee Collection'),
     ('defaulters', 'Defaulters'),
     ('reports', 'Reports'),
+    ('ai_assistant', 'AI Assistant'),
     ('stock_management', 'Stock Management'),
     ('fee_structure', 'Fee Structure'),
     ('fee_settings', 'Fee Settings'),

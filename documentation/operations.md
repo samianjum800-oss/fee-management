@@ -30,8 +30,13 @@ Settings create a placeholder `DATABASES` config with database name `dummy` when
 | `PUBLIC_URL`, `APP_URL`, `SITE_URL` | In that precedence order, choose public application URL used to derive WebAuthn RP ID and origin. |
 | `WEBAUTHN_RP_ID` | Explicit WebAuthn relying-party host; defaults to `PUBLIC_URL` hostname. |
 | `WEBAUTHN_ORIGIN` | Explicit WebAuthn origin; defaults to public URL without trailing slash. |
+| `AI_ASSISTANT_API_KEY` | Optional API key for general AXIS help replies. Keep it in the deployment secret store or ignored `.env`, never source control. |
+| `AI_ASSISTANT_MODEL` | Optional model identifier; required with the API key to enable general product-help answers. |
+| `AI_ASSISTANT_BASE_URL` | Optional OpenAI-compatible API root; defaults to `https://api.openai.com/v1`. |
 
 Settings reads a root `.env` file through `django-environ` if present. No `.env` file is part of the checked-in inventory. Never add secrets to documentation or version control.
+
+The assistant is enabled per school under **Desktop Features**. Without a provider key/model, local student search/count and feature-aware page navigation still work. When configured, general help sends the user's question and the enabled page catalogue to that provider; student database rows are not attached. Student, fee, attendance, and other operational-record questions stay local and unsupported requests are not forwarded.
 
 ## Common commands
 
