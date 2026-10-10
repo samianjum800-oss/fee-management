@@ -914,12 +914,10 @@
                 </div>
 
                 <div class="header-right">
-                    {% if tenant|has_feature:'ai_assistant' %}
                     <button class="axis-ai-header-trigger" id="axis-ai-header-trigger" type="button" aria-haspopup="dialog" aria-controls="axis-ai-panel" aria-expanded="false" title="Open AXIS AI assistant">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v4a3 3 0 0 0 3 3h1v-6H7v-1a5 5 0 0 1 10 0v1h-2v6h1a3 3 0 0 0 3-3v-4a7 7 0 0 0-7-7Z"/><path d="M9 20h6"/></svg>
                         <span>AI</span>
                     </button>
-                    {% endif %}
                     <!-- Notification Bell -->
                     <div class="notification-wrapper" id="notificationBell">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -1411,9 +1409,7 @@
     {% block extra_body %}{% endblock %}
     {% block extra_body_js %}{% endblock %}
     {% block extra_scripts %}{% endblock %}
-    {% if tenant|has_feature:'ai_assistant' %}
-        {% include 'tenant/ai/widget.html' %}
-    {% endif %}
+    {% include 'tenant/ai/widget.html' %}
     <script src="{% static 'js/confirm_dialog.js' %}"></script>
 </body>
 </html>

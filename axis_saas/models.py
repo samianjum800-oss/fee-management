@@ -23,6 +23,7 @@ SCHOOL_FEATURE_CHOICES = [
     ('defaulters', 'Defaulters'),
     ('reports', 'Reports'),
     ('ai_assistant', 'AI Assistant'),
+    ('ai_assistant_data_sharing', 'AI Assistant: allow provider to process school records'),
     ('stock_management', 'Stock Management'),
     ('fee_structure', 'Fee Structure'),
     ('fee_settings', 'Fee Settings'),

@@ -33,10 +33,11 @@ Settings create a placeholder `DATABASES` config with database name `dummy` when
 | `AI_ASSISTANT_API_KEY` | Optional API key for general AXIS help replies. Keep it in the deployment secret store or ignored `.env`, never source control. |
 | `AI_ASSISTANT_MODEL` | Optional model identifier; required with the API key to enable general product-help answers. |
 | `AI_ASSISTANT_BASE_URL` | Optional OpenAI-compatible API root; defaults to `https://api.openai.com/v1`. |
+| `AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER` | Defaults off. Platform-wide consent gate for sending read-only tool results to the configured provider. |
 
 Settings reads a root `.env` file through `django-environ` if present. No `.env` file is part of the checked-in inventory. Never add secrets to documentation or version control.
 
-The assistant is enabled per school under **Desktop Features**. Without a provider key/model, local student search/count and feature-aware page navigation still work. When configured, general help sends the user's question and the enabled page catalogue to that provider; student database rows are not attached. Student, fee, attendance, and other operational-record questions stay local and unsupported requests are not forwarded.
+The assistant launcher is visible in every tenant admin header; its API remains disabled until **AI Assistant** is selected under that school's **Desktop Features**. Provider access to school records requires two independent opt-ins: the platform-wide `AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER` setting and that school's **AI Assistant: allow provider to process school records** desktop feature. Without both, the model receives no school-data tools. Local student/staff search, student count, fee-balance snapshots, today's full-day attendance summary, defaulter/class/stock summaries, Markdown knowledge retrieval, and feature-aware navigation remain tenant-scoped. General-help turns keep short server-side session history only while data-sharing consent is active; revoking consent purges it. Chat write actions are not available.
 
 ## Common commands
 
