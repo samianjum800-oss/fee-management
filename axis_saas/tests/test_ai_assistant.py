@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from urllib.error import URLError
 
 from django.conf import settings
 from django.test import RequestFactory, SimpleTestCase, override_settings
@@ -19,11 +20,11 @@ from axis_saas.views.ai.intents import (
     is_student_count_question,
 )
 from axis_saas.views.ai.knowledge import available_pages
-from axis_saas.views.ai.providers import answer_general_question, run_assistant_model_turn
+from axis_saas.views.ai.providers import run_assistant_model_turn
 from axis_saas.views.ai.knowledge import fuzzy_page_intent
 from axis_saas.views.ai.registry import enabled_tool_definitions, execute_tool
 from axis_saas.views.ai.tools import _fuzzy_student_names
-from axis_saas.views.ai.assistant import assistant_api
+from axis_saas.views.ai.assistant import _rate_limited, assistant_api
 
 
 class AssistantTestSession(dict):
@@ -98,6 +99,25 @@ class AssistantIntentTests(SimpleTestCase):
 
 
 class AssistantConfigurationTests(SimpleTestCase):
+    @patch('axis_saas.views.ai.assistant.cache.incr', return_value=30)
+    @patch('axis_saas.views.ai.assistant.cache.add', return_value=False)
+    def test_rate_limit_allows_thirtieth_request(self, cache_add, cache_incr):
+        request = SimpleNamespace(session=AssistantTestSession())
+        self.assertFalse(_rate_limited(request, 'demo'))
+        cache_add.assert_called_once_with('ai_assistant_rate:demo:assistant-test', 1, timeout=60)
+        cache_incr.assert_called_once_with('ai_assistant_rate:demo:assistant-test')
+
+    @patch('axis_saas.views.ai.assistant.cache.incr', return_value=31)
+    @patch('axis_saas.views.ai.assistant.cache.add', return_value=False)
+    def test_rate_limit_rejects_requests_after_thirty(self, _cache_add, _cache_incr):
+        request = SimpleNamespace(session=AssistantTestSession())
+        self.assertTrue(_rate_limited(request, 'demo'))
+
+    @patch('axis_saas.views.ai.assistant.cache.add', side_effect=RuntimeError('cache unavailable'))
+    def test_rate_limit_fails_closed_when_cache_is_unavailable(self, _cache_add):
+        request = SimpleNamespace(session=AssistantTestSession())
+        self.assertTrue(_rate_limited(request, 'demo'))
+
     def test_admin_feature_is_desktop_opt_in(self):
         form = SchoolClientForm()
         self.assertIn(('ai_assistant', 'AI Assistant'), list(form.fields['desktop_features'].choices))
@@ -113,7 +133,58 @@ class AssistantConfigurationTests(SimpleTestCase):
 
     @override_settings(AI_ASSISTANT_API_KEY='', AI_ASSISTANT_MODEL='')
     def test_general_provider_is_optional(self):
-        self.assertIsNone(answer_general_question('How does AXIS work?', 'Dashboard', []))
+        result = run_assistant_model_turn(
+            'How does AXIS work?',
+            'Dashboard',
+            [],
+            tenant=None,
+            schema_name='',
+        )
+        self.assertIsNone(result['reply'])
+        self.assertEqual(result['provider_status'], 'unconfigured')
+
+    @override_settings(AI_ASSISTANT_API_KEY='test-key', AI_ASSISTANT_MODEL='test-model')
+    @patch('axis_saas.views.ai.providers.urlopen', side_effect=URLError('provider unavailable'))
+    def test_provider_connection_failure_is_reported_as_unavailable(self, _urlopen):
+        result = run_assistant_model_turn(
+            'How does AXIS work?',
+            'Dashboard',
+            [],
+            tenant=None,
+            schema_name='',
+        )
+        self.assertIsNone(result['reply'])
+        self.assertEqual(result['provider_status'], 'unavailable')
+
+    @override_settings(AI_ASSISTANT_API_KEY='test-key', AI_ASSISTANT_MODEL='test-model')
+    @patch('axis_saas.views.ai.providers.urlopen')
+    def test_empty_provider_response_is_reported_as_unavailable(self, urlopen):
+        urlopen.return_value = self._provider_response({
+            'choices': [{'message': {'content': ''}}],
+        })
+        result = run_assistant_model_turn(
+            'How does AXIS work?',
+            'Dashboard',
+            [],
+            tenant=None,
+            schema_name='',
+        )
+        self.assertIsNone(result['reply'])
+        self.assertEqual(result['provider_status'], 'unavailable')
+
+    @override_settings(AI_ASSISTANT_API_KEY='test-key', AI_ASSISTANT_MODEL='test-model')
+    @patch('axis_saas.views.ai.providers.urlopen')
+    def test_malformed_provider_response_is_reported_as_unavailable(self, urlopen):
+        urlopen.return_value = self._provider_response({'choices': [None]})
+        result = run_assistant_model_turn(
+            'How does AXIS work?',
+            'Dashboard',
+            [],
+            tenant=None,
+            schema_name='',
+        )
+        self.assertIsNone(result['reply'])
+        self.assertEqual(result['provider_status'], 'unavailable')
 
     @staticmethod
     def _provider_response(body):
@@ -150,6 +221,7 @@ class AssistantConfigurationTests(SimpleTestCase):
         sent = json.loads(urlopen.call_args.args[0].data)
         self.assertNotIn('tools', sent)
         self.assertEqual(result['reply'], 'General help answer')
+        self.assertEqual(result['provider_status'], 'ready')
 
     @override_settings(
         AI_ASSISTANT_API_KEY='test-key',
@@ -189,7 +261,9 @@ class AssistantConfigurationTests(SimpleTestCase):
         )
         first_payload = json.loads(urlopen.call_args_list[0].args[0].data)
         exposed_tools = {item['function']['name'] for item in first_payload['tools']}
-        self.assertEqual(exposed_tools, {'search_students', 'count_students', 'attendance_today'})
+        self.assertEqual(exposed_tools, {
+            'search_students', 'count_students', 'attendance_today', 'attendance_range',
+        })
         self.assertEqual(urlopen.call_count, 2)
         self.assertEqual(result['tools_used'], ['search_students'])
         self.assertEqual(result['actions'][0]['url'], '/portal/demo/students/1/')
@@ -243,6 +317,30 @@ class AssistantConfigurationTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(provider.call_args.args[1], 'Fee collection')
 
+    @patch('axis_saas.views.ai.assistant._rate_limited', return_value=False)
+    @patch(
+        'axis_saas.views.ai.assistant.run_assistant_model_turn',
+        return_value={'reply': None, 'actions': [], 'tools_used': [], 'provider_status': 'unavailable'},
+    )
+    def test_provider_outage_is_not_reported_as_missing_configuration(self, _provider, _rate_limited):
+        response = assistant_api(self._request('How does AXIS work?'), 'demo')
+        self.assertEqual(response.status_code, 503)
+        body = json.loads(response.content)
+        self.assertTrue(body['provider_configured'])
+        self.assertEqual(body['provider_status'], 'unavailable')
+
+    @patch('axis_saas.views.ai.assistant._rate_limited', return_value=False)
+    @patch(
+        'axis_saas.views.ai.assistant.run_assistant_model_turn',
+        return_value={'reply': None, 'actions': [], 'tools_used': [], 'provider_status': 'unconfigured'},
+    )
+    def test_missing_provider_configuration_is_exposed_in_response(self, _provider, _rate_limited):
+        response = assistant_api(self._request('How does AXIS work?'), 'demo')
+        self.assertEqual(response.status_code, 200)
+        body = json.loads(response.content)
+        self.assertFalse(body['provider_configured'])
+        self.assertEqual(body['provider_status'], 'unconfigured')
+
     @patch('axis_saas.views.ai.assistant.run_assistant_model_turn', return_value={'reply': 'Help answer', 'actions': [], 'tools_used': []})
     def test_revoked_data_consent_purges_provider_history(self, provider):
         request = self._request('How does the assistant work?')
@@ -265,7 +363,10 @@ class AssistantConfigurationTests(SimpleTestCase):
         definitions = enabled_tool_definitions(tenant)
         names = {item['function']['name'] for item in definitions}
         self.assertIn('search_students', names)
+        self.assertIn('staff_attendance_range', names)
         self.assertNotIn('search_staff', names)
+        self.assertNotIn('fee_collection_summary', names)
+        self.assertNotIn('leave_request_summary', names)
         with self.assertRaises(ValueError):
             execute_tool('delete_everything', '{}', tenant=tenant, schema_name='demo')
 
@@ -275,6 +376,95 @@ class AssistantConfigurationTests(SimpleTestCase):
             is_feature_enabled=lambda feature, _channel: feature in {'students', 'ai_assistant'},
         )
         self.assertEqual(enabled_tool_definitions(tenant), [])
+
+    @override_settings(AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER=True)
+    @patch('axis_saas.views.ai.registry.attendance_range_summary')
+    def test_attendance_range_tool_validates_dates_and_bounds(self, attendance_summary):
+        tenant = SimpleNamespace(
+            is_feature_enabled=lambda feature, _channel: feature in {
+                'attendance_management', 'ai_assistant_data_sharing',
+            },
+        )
+        attendance_summary.return_value = {'reply': 'Attendance summary', 'actions': []}
+        result = execute_tool(
+            'attendance_range',
+            '{"start_date":"2026-10-01","end_date":"2026-10-07"}',
+            tenant=tenant,
+            schema_name='demo',
+        )
+        self.assertEqual(result['reply'], 'Attendance summary')
+        attendance_summary.assert_called_once()
+        for arguments in (
+            '{"start_date":"2026-10-07","end_date":"2026-10-01"}',
+            '{"start_date":"2025-01-01","end_date":"2026-10-07"}',
+            '{"start_date":"not-a-date","end_date":"2026-10-07"}',
+        ):
+            with self.subTest(arguments=arguments), self.assertRaises(ValueError):
+                execute_tool(
+                    'attendance_range',
+                    arguments,
+                    tenant=tenant,
+                    schema_name='demo',
+                )
+
+    @override_settings(AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER=True)
+    @patch('axis_saas.views.ai.registry.count_students')
+    def test_student_count_tool_accepts_bounded_class_and_status_filters(self, count):
+        tenant = SimpleNamespace(
+            is_feature_enabled=lambda feature, _channel: feature in {
+                'students', 'ai_assistant_data_sharing',
+            },
+        )
+        count.return_value = {'reply': 'Filtered count', 'actions': []}
+        execute_tool(
+            'count_students',
+            '{"grade":"Grade 6","section":"A","status":"active"}',
+            tenant=tenant,
+            schema_name='demo',
+        )
+        count.assert_called_once_with(
+            'demo', roman_urdu=False, grade='Grade 6', section='A', status='active',
+        )
+        with self.assertRaises(ValueError):
+            execute_tool(
+                'count_students',
+                '{"status":"deleted"}',
+                tenant=tenant,
+                schema_name='demo',
+            )
+
+    @override_settings(AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER=True)
+    @patch('axis_saas.views.ai.registry.leave_request_summary')
+    @patch('axis_saas.views.ai.registry.staff_attendance_summary')
+    @patch('axis_saas.views.ai.registry.fee_collection_summary')
+    def test_domain_summaries_dispatch_with_validated_dates(
+        self, fee_summary, staff_summary, leave_summary,
+    ):
+        tenant = SimpleNamespace(
+            is_feature_enabled=lambda feature, _channel: feature in {
+                'fee_collection', 'reports', 'leave_management',
+                'ai_assistant_data_sharing',
+            },
+        )
+        cases = (
+            ('fee_collection_summary', fee_summary),
+            ('staff_attendance_range', staff_summary),
+            ('leave_request_summary', leave_summary),
+        )
+        for tool_name, summary in cases:
+            summary.return_value = {'reply': 'Verified summary', 'actions': []}
+            with self.subTest(tool=tool_name):
+                result = execute_tool(
+                    tool_name,
+                    '{"start_date":"2026-10-01","end_date":"2026-10-07"}',
+                    tenant=tenant,
+                    schema_name='demo',
+                )
+                self.assertEqual(result['reply'], 'Verified summary')
+            self.assertEqual(summary.call_count, 1)
+            start_date, end_date = summary.call_args.args[1:3]
+            self.assertEqual(start_date.isoformat(), '2026-10-01')
+            self.assertEqual(end_date.isoformat(), '2026-10-07')
 
     def test_widget_template_compiles(self):
         self.assertIsNotNone(get_template('tenant/ai/widget.html'))

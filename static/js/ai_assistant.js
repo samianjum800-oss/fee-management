@@ -75,7 +75,7 @@
             const result = await response.json();
             pending.remove();
             if (!response.ok) {
-                appendMessage(result.error || 'Assistant request complete nahin kar saka. Dobara try karein.', 'assistant');
+                appendMessage(result.reply || result.error || 'Assistant request complete nahin kar saka. Dobara try karein.', 'assistant');
             } else {
                 appendMessage(result.reply || 'Is sawal ka jawab nahin mila.', 'assistant', result.actions);
             }

@@ -37,7 +37,9 @@ Settings create a placeholder `DATABASES` config with database name `dummy` when
 
 Settings reads a root `.env` file through `django-environ` if present. No `.env` file is part of the checked-in inventory. Never add secrets to documentation or version control.
 
-The assistant launcher is visible in every tenant admin header; its API remains disabled until **AI Assistant** is selected under that school's **Desktop Features**. Provider access to school records requires two independent opt-ins: the platform-wide `AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER` setting and that school's **AI Assistant: allow provider to process school records** desktop feature. Without both, the model receives no school-data tools. Local student/staff search, student count, fee-balance snapshots, today's full-day attendance summary, defaulter/class/stock summaries, Markdown knowledge retrieval, and feature-aware navigation remain tenant-scoped. General-help turns keep short server-side session history only while data-sharing consent is active; revoking consent purges it. Chat write actions are not available.
+The assistant launcher is visible in every tenant admin header; its API remains disabled until **AI Assistant** is selected under that school's **Desktop Features**. Provider access to school records requires two independent opt-ins: the platform-wide `AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER` setting and that school's **AI Assistant: allow provider to process school records** desktop feature. Without both, the model receives no school-data tools. The allow-listed read tools cover student/staff search, filtered student counts, named fee balances, date-range fee collections and current outstanding balances, student/staff attendance, staff leave status totals, defaulters, classes and stock. Date-range reports are inclusive and capped at 366 days; fee collection is period-based while outstanding balance is a current snapshot. All queries stay tenant-scoped and require their module feature. Markdown knowledge retrieval and feature-aware navigation are also available. General-help turns keep short server-side session history only while data-sharing consent is active; revoking consent purges it. Chat write actions are not available.
+
+Requests are limited to 30 per authenticated school-admin session per minute, keyed by tenant schema and session in Django's configured cache. Cache errors fail closed and emit a warning; use the shared Redis cache in production, not a per-process local cache. Provider calls have an 18-second timeout. Missing credentials return `provider_status: unconfigured`; an upstream or malformed-response failure returns HTTP 503 with `provider_status: unavailable`; a successful turn returns `provider_status: ready`. With both data-sharing gates enabled, the read-only tools include date-bounded full-day attendance summaries (maximum 366 inclusive days); returned totals count recorded marks, not unique students. Monitor application warning logs and provider-side usage/error dashboards; never log API keys, full prompts, or tool results.
 
 ## Common commands
 
@@ -60,6 +62,7 @@ Focused tests can be invoked by test module, for example:
 python manage.py test axis_saas.tests.test_attendance_system
 python manage.py test axis_saas.tests.test_timetable_api
 python manage.py test axis_saas.tests.test_leave_management_v2
+python manage.py test axis_saas.tests.test_ai_assistant
 ```
 
 The helper `scripts/run_attendance_tests.sh` accepts `--quick`, `--auto-mark`, `--dashboard`, or `all`. These tests use tenant schemas and may require a PostgreSQL role with permission to create/drop schemas; run them against a disposable test database, never production.
@@ -136,5 +139,7 @@ No test suite was run while writing these docs. Run `python manage.py check` and
 | Attendance rows are missing | Check tenant AttendancePolicy, holiday tables, command/lazy trigger, class/student active flags, date timezone, and unique full-day/period constraints. |
 | Timetable teacher grid has stale slots | Inspect DaySchedule changes, signal/on-commit reconciliation logs, assigned timetable day JSON, and `PeriodTeacherAssignment`; do not delete rows manually without checking historical intent. |
 | Static asset manifest errors | Run `collectstatic`; confirm static root and WhiteNoise storage; ensure referenced source files exist before hashed-manifest lookup. |
+| AI assistant reports provider unavailable | Check provider credentials/model/base URL, outbound HTTPS, provider status/usage, and the 18-second request timeout. `provider_status: unconfigured` means credentials/model are absent; `unavailable` means the configured call failed. |
+| AI assistant asks to retry while provider is healthy | Check Redis/cache health and the `AI assistant rate-limit cache failed` warning. The endpoint fails closed when it cannot enforce request limits. |
 | Django admin/root works but portal fails | Root public URL config may work while tenant path/schema lookup, public records, tenant migration, or custom session state is wrong. |
 | Container starts without Redis | Current entrypoint waits for PostgreSQL only; verify Redis separately because session token/cache features depend on it. |

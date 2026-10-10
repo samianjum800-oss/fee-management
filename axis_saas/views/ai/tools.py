@@ -10,8 +10,17 @@ from django.utils.http import urlencode
 from django.utils import timezone
 from django_tenants.utils import schema_context
 
-from ...models import Product, SchoolClass, Staff, Student, StudentAttendance
-from ..helpers import get_student_pending_queryset
+from ...models import (
+    LeaveRequest,
+    PaymentTransaction,
+    Product,
+    SchoolClass,
+    Staff,
+    StaffAttendance,
+    Student,
+    StudentAttendance,
+)
+from ..helpers import aggregate_pending_totals, get_student_pending_queryset
 
 
 def _normalized_name(value):
@@ -86,14 +95,34 @@ def lookup_students(schema_name, name, roman_urdu=True, limit=8):
     return {'reply': reply, 'actions': actions}
 
 
-def count_students(schema_name, roman_urdu=True):
+def count_students(schema_name, roman_urdu=True, grade='', section='', status=''):
+    if status and status not in {'active', 'suspended', 'graduated'}:
+        raise ValueError('Unknown student status.')
+    filters = {}
+    if grade:
+        filters['grade__iexact'] = grade
+    if section:
+        filters['section__iexact'] = section
+    if status:
+        filters['status'] = status
     with schema_context(schema_name):
-        total = Student.objects.count()
-        active = Student.objects.filter(status='active').count()
+        students = Student.objects.filter(**filters)
+        counts = {
+            row['status']: row['count']
+            for row in students.values('status').annotate(count=Count('pk'))
+        }
+    total = sum(counts.values())
+    active = counts.get('active', 0)
+    scope = ' '.join(part for part in (
+        f'grade {grade}' if grade else '',
+        f'section {section}' if section else '',
+        f'{status} status' if status else '',
+    ) if part)
+    scope_text = f' ({scope})' if scope else ''
     if roman_urdu:
-        reply = f'School mein kul {total} students hain; in mein se {active} active hain.'
+        reply = f'School mein{scope_text} kul {total} students hain; in mein se {active} active hain.'
     else:
-        reply = f'The school has {total} students, including {active} active students.'
+        reply = f'The school has {total} students{scope_text}, including {active} active students.'
     return {
         'reply': reply,
         'actions': [{
@@ -102,6 +131,105 @@ def count_students(schema_name, roman_urdu=True):
             'url': reverse('student_list', kwargs={'schema_name': schema_name}),
         }],
     }
+
+
+def fee_collection_summary(schema_name, start_date, end_date, roman_urdu=True):
+    with schema_context(schema_name):
+        payments = PaymentTransaction.objects.filter(
+            payment_date__range=(start_date, end_date),
+        )
+        collected = payments.aggregate(
+            total=Sum('amount'),
+            transactions=Count('pk'),
+            cash=Sum('amount', filter=Q(payment_mode='cash')),
+            bank_transfer=Sum('amount', filter=Q(payment_mode='bank_transfer')),
+            cheque=Sum('amount', filter=Q(payment_mode='cheque')),
+            online=Sum('amount', filter=Q(payment_mode='online')),
+        )
+        current_pending = aggregate_pending_totals()['total_pending']
+        active_defaulters = get_student_pending_queryset(
+            Student.objects.filter(status='active')
+        ).filter(pending_amount__gt=0).count()
+    total = collected['total'] or 0
+    mode_totals = [
+        f'{mode.replace("_", " ")}: {amount:,.2f}'
+        for mode in ('cash', 'bank_transfer', 'cheque', 'online')
+        if (amount := collected[mode])
+    ]
+    modes = '; '.join(mode_totals) or ('koi payment record nahin' if roman_urdu else 'no recorded payments')
+    if roman_urdu:
+        reply = (
+            f'{start_date.isoformat()} se {end_date.isoformat()} tak {collected["transactions"]} payments mein '
+            f'{total:,.2f} collect hue ({modes}). Aaj ka current outstanding balance '
+            f'{current_pending:,.2f} hai; {active_defaulters} active students ka balance baqi hai.'
+        )
+    else:
+        reply = (
+            f'{collected["transactions"]} payments collected {total:,.2f} from '
+            f'{start_date.isoformat()} through {end_date.isoformat()} ({modes}). '
+            f'The current school-wide outstanding balance is {current_pending:,.2f}; '
+            f'{active_defaulters} active students have a remaining balance.'
+        )
+    return {'reply': reply, 'actions': []}
+
+
+def staff_attendance_summary(schema_name, start_date, end_date, roman_urdu=True):
+    with schema_context(schema_name):
+        totals = StaffAttendance.objects.filter(
+            date__range=(start_date, end_date),
+        ).aggregate(
+            marked=Count('pk'),
+            present=Count('pk', filter=Q(status='present')),
+            late=Count('pk', filter=Q(status='late')),
+            half_day=Count('pk', filter=Q(status='half_day')),
+            absent=Count('pk', filter=Q(status='absent')),
+            on_leave=Count('pk', filter=Q(status='on_leave')),
+            holiday=Count('pk', filter=Q(status='holiday')),
+            weekend=Count('pk', filter=Q(status='weekend')),
+        )
+    eligible = totals['present'] + totals['late'] + totals['half_day'] + totals['absent']
+    rate = round((totals['present'] + totals['late'] + totals['half_day']) * 100 / eligible, 1) if eligible else 0
+    if roman_urdu:
+        reply = (
+            f'{start_date.isoformat()} se {end_date.isoformat()} tak staff attendance ke '
+            f'{totals["marked"]} records: {totals["present"]} present, {totals["late"]} late, '
+            f'{totals["half_day"]} half-day, {totals["absent"]} absent, {totals["on_leave"]} leave par. '
+            f'Recorded working-day attendance rate {rate}%; holidays aur weekends denominator mein shamil nahin.'
+        )
+    else:
+        reply = (
+            f'{totals["marked"]} staff attendance records from {start_date.isoformat()} through '
+            f'{end_date.isoformat()}: {totals["present"]} present, {totals["late"]} late, '
+            f'{totals["half_day"]} half-day, {totals["absent"]} absent, {totals["on_leave"]} on leave. '
+            f'Recorded working-day attendance rate: {rate}%; holidays and weekends are excluded from the denominator.'
+        )
+    return {'reply': reply, 'actions': []}
+
+
+def leave_request_summary(schema_name, start_date, end_date, roman_urdu=True):
+    with schema_context(schema_name):
+        status_counts = {
+            row['status']: row['count']
+            for row in LeaveRequest.objects.filter(
+                created_at__date__range=(start_date, end_date),
+            ).values('status').annotate(count=Count('pk'))
+        }
+    total = sum(status_counts.values())
+    counts = ', '.join(
+        f'{status}: {status_counts.get(status, 0)}'
+        for status in ('pending', 'approved', 'rejected', 'cancelled')
+    )
+    if roman_urdu:
+        reply = (
+            f'{start_date.isoformat()} se {end_date.isoformat()} ke darmiyan '
+            f'{total} staff leave requests submit hui: {counts}. Yeh submission date ke mutabiq hai.'
+        )
+    else:
+        reply = (
+            f'{total} staff leave requests were submitted from {start_date.isoformat()} through '
+            f'{end_date.isoformat()}: {counts}. This is based on request creation date.'
+        )
+    return {'reply': reply, 'actions': []}
 
 
 def lookup_staff(schema_name, name, roman_urdu=True, limit=8):
@@ -189,6 +317,45 @@ def attendance_today_summary(schema_name, roman_urdu=True, report_url=None):
         actions.append({
             'label': 'Attendance report',
             'detail': today.isoformat(),
+            'url': report_url,
+        })
+    return {'reply': reply, 'actions': actions}
+
+
+def attendance_range_summary(schema_name, start_date, end_date, roman_urdu=True, report_url=None):
+    with schema_context(schema_name):
+        totals = StudentAttendance.objects.filter(
+            date__range=(start_date, end_date),
+            period_order__isnull=True,
+        ).aggregate(
+            marked=Count('pk'),
+            present=Count('pk', filter=Q(status='present')),
+            absent=Count('pk', filter=Q(status='absent')),
+            late=Count('pk', filter=Q(status='late')),
+            half_day=Count('pk', filter=Q(status='half_day')),
+            excused=Count('pk', filter=Q(status='excused')),
+        )
+    eligible = totals['present'] + totals['absent'] + totals['late'] + totals['half_day']
+    rate = round((totals['present'] + totals['late'] + totals['half_day']) * 100 / eligible, 1) if eligible else 0
+    if roman_urdu:
+        reply = (
+            f'{start_date.isoformat()} se {end_date.isoformat()} tak full-day attendance: '
+            f'{totals["marked"]} recorded marks, {totals["present"]} present, '
+            f'{totals["absent"]} absent, {totals["late"]} late; recorded attendance rate {rate}%. '
+            'Counts recorded marks, not unique students.'
+        )
+    else:
+        reply = (
+            f'Full-day attendance from {start_date.isoformat()} through {end_date.isoformat()}: '
+            f'{totals["marked"]} recorded marks, {totals["present"]} present, '
+            f'{totals["absent"]} absent, {totals["late"]} late; recorded attendance rate {rate}%. '
+            'Counts are recorded marks, not unique students.'
+        )
+    actions = []
+    if report_url:
+        actions.append({
+            'label': 'Attendance report',
+            'detail': f'{start_date.isoformat()} – {end_date.isoformat()}',
             'url': report_url,
         })
     return {'reply': reply, 'actions': actions}
