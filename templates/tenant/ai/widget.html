@@ -46,14 +46,17 @@
         <button class="axis-ai-close" id="axis-ai-close" type="button" aria-label="Close assistant">×</button>
     </header>
     <div class="axis-ai-messages" id="axis-ai-messages" role="log" aria-live="polite" aria-relevant="additions">
-        <div class="axis-ai-message">Assalam-o-alaikum! Main is school ke students dhoond sakta hoon aur enabled admin pages ke links de sakta hoon. Sawal Roman Urdu ya English mein poochhein.</div>
+        <div class="axis-ai-message">Assalam-o-alaikum! Main students/staff profiles dhoond sakta hoon, student ka pending fee balance aur aaj ki attendance summary bata sakta hoon, aur enabled admin pages ke links de sakta hoon. Sawal Roman Urdu ya English mein poochhein.</div>
     </div>
     <div class="axis-ai-suggestions" aria-label="Suggested questions">
         <button type="button" data-ai-prompt="Sami name ke kitne students hain?">Student dhoondhein</button>
+        <button type="button" data-ai-prompt="Find teacher Sami Khan">Teacher dhoondhein</button>
+        <button type="button" data-ai-prompt="Sami ki pending fee kitni hai?">Pending fee</button>
+        <button type="button" data-ai-prompt="Aaj attendance kaisi hai?">Aaj ki hazri</button>
         <button type="button" data-ai-prompt="Attendance report kholo">Attendance report</button>
         <button type="button" data-ai-prompt="Fee collection kahan hai?">Fee collection</button>
     </div>
-    <p class="axis-ai-privacy">Student searches tenant ke andar locally hoti hain. General AI replies ke liye configured provider ko aapka sawal bheja ja sakta hai; student records nahin bheje jate.</p>
+    <p class="axis-ai-privacy">Local search hamesha isi school mein hoti hai.{% if ai_assistant_provider_data_enabled %} Admin ne external AI data sharing enable ki hai; read-only tool results provider ko ja sakte hain.{% else %} School records external AI ko share nahin hote.{% endif %}</p>
     <form class="axis-ai-form" id="axis-ai-form">
         <textarea id="axis-ai-input" maxlength="500" rows="1" aria-label="Ask AXIS Assistant" placeholder="Apna sawal likhein…" required></textarea>
         <button class="axis-ai-send" id="axis-ai-send" type="submit">Send</button>

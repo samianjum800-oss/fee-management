@@ -34,6 +34,8 @@ def extract_student_name_lookup(message):
     patterns = (
         rf'{name_pattern}\s+(?:naam|name)\s+(?:(?:ke|ki|kay|ka|k)\s+)?(?:kitne|kitni|how many)\s+(?:students?|talib(?:a|aat)?)\b',
         rf'{name_pattern}\s+(?:naam|name)\s+(?:(?:ke|ki|kay|ka|k)\s+)?(?:saare|saray|sari|all|list)\s+(?:students?|talib(?:a|aat)?)\b',
+        rf'\b(?:show|find|search|list|open)\s+(?:all\s+)?(?:students?|talib(?:a|aat)?)\s+(?:named|called)\s+{name_pattern}(?:\s+(?:please|profile|record|details|dikhao)\b|[?!.,]|$)',
+        rf'{name_pattern}\s+(?:ka|ki|ke)\s+(?:profile|record|details)\b',
         rf'{name_pattern}\s+(?:ke|ki|kay)\s+(?:kitne|kitni)\s+(?:students?|talib(?:a|aat)?)\b',
         r'\b(?:students?|talib(?:a|aat)?)\s+(?:named|called|with name)\s+(?P<name>[a-z0-9][a-z0-9 .\'-]{0,78}?)(?:\s+(?:list|please|dikhao|batao)\b|[?!.,]|$)',
         r'\bhow many\s+(?:students?|talib(?:a|aat)?)\s+(?:named|called)\s+(?P<name>[a-z0-9][a-z0-9 .\'-]{0,78}?)(?:\s+(?:are|is|hai|hain|he|hen)\b|[?!.,]|$)',
@@ -48,10 +50,44 @@ def extract_student_name_lookup(message):
     return None
 
 
+def extract_staff_name_lookup(message):
+    text = normalize_message(message)
+    name_pattern = r"(?P<name>[a-z0-9][a-z0-9 .'-]{0,78}?)"
+    patterns = (
+        rf'\b(?:find|search|show|list|lookup)\s+(?:the\s+)?(?:staff|teacher)\s+(?:named\s+|called\s+)?{name_pattern}(?:\s+(?:please|profile|ka|ki)\b|[?!.,]|$)',
+        rf'{name_pattern}\s+(?:naam|name)\s+(?:ka|ki|ke)\s+(?:staff|teacher)\b',
+        rf'{name_pattern}\s+(?:teacher|staff)\s+(?:profile|record|details)\b',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            name = _clean_name(match.group('name'))
+            if name:
+                return name
+    return None
+
+
+def extract_fee_balance_student(message):
+    text = normalize_message(message)
+    name_pattern = r"(?P<name>[a-z0-9][a-z0-9 .'-]{0,78}?)"
+    patterns = (
+        rf'{name_pattern}\s+(?:ki|ka|ke)\s+(?:(?:pending|remaining|baqaya)\s+)?fees?\b',
+        rf'\b(?:pending|remaining|balance|baqaya)\s+(?:fee\s+)?(?:for|of)\s+{name_pattern}(?:[?!.,]|$)',
+        rf'\b(?:fee|fees)\s+(?:for|of)\s+{name_pattern}(?:\s+(?:kitni|how much|pending|baqaya)\b|[?!.,]|$)',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            name = _clean_name(match.group('name'))
+            if name:
+                return name
+    return None
+
+
 def is_student_count_question(message):
     text = normalize_message(message)
     is_count_question = bool(re.search(
-        r'\b(?:how many|count|kitne|kitni)\b.*\b(?:students?|talib(?:a|aat)?)\b',
+        r'\b(?:how many|count|kitne|kitni|total|number of)\b.*\b(?:students?|talib(?:a|aat)?)\b',
         text,
     ))
     asks_for_a_breakdown = bool(re.search(
@@ -69,7 +105,7 @@ def is_school_data_question(message):
         text,
     ))
     requests_records = bool(re.search(
-        r'\b(how many|how much|count|kitne|kitni|list|find|search|who|which|show|dikhao|pending|overdue|absent|present|late|paid|balance|marks|profile|details|record|records|kaun|kis)\b',
+        r'\b(how many|how much|count|total|number of|kitne|kitni|list|find|search|who|which|show|dikhao|pending|overdue|absent|present|late|paid|balance|marks|profile|details|record|records|kaun|kis)\b',
         text,
     ))
     return mentions_school_data and requests_records
@@ -80,6 +116,16 @@ def is_navigation_request(message):
         r'\b(open|go to|take me|navigate|mark|manage|kholo|khol|dikhao|where is|kahan)\b',
         normalize_message(message),
     ))
+
+
+def is_attendance_summary_question(message):
+    text = normalize_message(message)
+    mentions_attendance = bool(re.search(r'\b(attendance|hazri|hajri)\b', text))
+    asks_for_summary = bool(re.search(
+        r'\b(today|aaj|summary|status|rate|percentage|kitni|kitne|how many|kya|kaisi|kaisa|report)\b',
+        text,
+    ))
+    return mentions_attendance and asks_for_summary and not is_navigation_request(text)
 
 
 def find_page_intent(message, pages):

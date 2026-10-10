@@ -1,5 +1,6 @@
 from django_tenants.utils import get_public_schema_name
 from django_tenants.utils import schema_context
+from django.conf import settings
 from .models import SchoolClient, STAFF_PORTAL_FEATURE_CHOICES
 
 class DummyTenant:
@@ -29,3 +30,17 @@ def staff_portal_features(request):
                 or (isinstance(tenant.enabled_features, list) and bool(tenant.enabled_features))
             }
     return {'staff_portal_features': enabled}
+
+
+def ai_assistant_context(request):
+    tenant = getattr(request, 'tenant', None)
+    sharing_allowed = (
+        getattr(settings, 'AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER', False)
+        and tenant is not None
+        and getattr(tenant, 'is_feature_enabled', lambda *_args: False)(
+            'ai_assistant_data_sharing', 'desktop'
+        )
+    )
+    return {
+        'ai_assistant_provider_data_enabled': sharing_allowed,
+    }

@@ -113,6 +113,10 @@ def require_school_feature(feature_key):
             if tenant.tenant_type not in ('school', 'wing_school', 'single_small_school') or not tenant.is_feature_enabled(feature_key, channel):
                 raise Http404('This school feature is not enabled for this tenant.')
             return view_func(request, schema_name, *args, **kwargs)
+        wrapper.required_school_features = tuple(dict.fromkeys((
+            *getattr(view_func, 'required_school_features', ()),
+            feature_key,
+        )))
         return wrapper
     return decorator
 
