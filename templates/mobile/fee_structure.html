@@ -362,7 +362,9 @@
       Add New Fee Structure
     {% endif %}
   </div>
-  <form method="post" id="feeForm">
+  <form method="post" id="feeForm"
+        data-confirm="Save this monthly fee structure?"
+        data-confirm-title="Confirm fee structure" data-confirm-label="Save fee">
     {% csrf_token %}
     <div class="field-group">
       <label>Class</label>

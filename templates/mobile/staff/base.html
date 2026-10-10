@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="{% static 'css/confirm_dialog.css' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}AXIS Staff Portal{% endblock %}</title>
@@ -310,6 +311,9 @@
             font-weight: 600;
             margin-bottom: 12px;
         }
+        .alert.success { background: rgba(22, 163, 74, .10); border-color: var(--success); color: #166534; }
+        .alert.error, .alert.danger { background: rgba(225, 29, 72, .10); border-color: var(--danger); color: #9f1239; }
+        .alert.warning { background: rgba(245, 158, 11, .14); border-color: var(--warning); color: #854d0e; }
 
         .security-alert {
             background: #fffbeb;
@@ -515,7 +519,7 @@
     <main class="container">
         {% if messages %}
             {% for message in messages %}
-                <div class="alert">{{ message }}</div>
+                <div class="alert {{ message.tags }}" role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}" aria-live="{% if message.tags == 'error' %}assertive{% else %}polite{% endif %}">{{ message }}</div>
             {% endfor %}
         {% endif %}
         {% block body %}{% endblock %}
@@ -676,5 +680,6 @@
 </script>
 {% endif %}
 
+    <script src="{% static 'js/confirm_dialog.js' %}"></script>
 </body>
 </html>

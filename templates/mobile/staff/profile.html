@@ -671,7 +671,9 @@
     {# Inline alert slot — JS writes success/error messages here. #}
     <div id="pfPwAlert" style="display:none;"></div>
 
-    <form method="post" action="{% url 'staff_change_password' %}" id="pfPwForm" novalidate>
+    <form method="post" action="{% url 'staff_change_password' %}" id="pfPwForm" novalidate
+          data-confirm="Change your staff portal password?"
+          data-confirm-title="Change password" data-confirm-label="Change password">
         {% csrf_token %}
 
         <div class="pf-row2">

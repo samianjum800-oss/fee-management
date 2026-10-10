@@ -733,7 +733,9 @@
             <h3 id="classModalTitle">Add Class</h3>
             <button class="close-modal" onclick="closeModal('classModal')">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm">
+        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm"
+              data-confirm="Save this class information?"
+              data-confirm-title="Save class" data-confirm-label="Save class">
             {% csrf_token %}
             <input type="hidden" name="return_to" value="classes_management">
             <div class="form-field">

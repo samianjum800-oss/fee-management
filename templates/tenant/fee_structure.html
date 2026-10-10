@@ -25,7 +25,9 @@
             Add New Fee Structure
         {% endif %}
     </h3>
-    <form method="post" id="feeForm">
+    <form method="post" id="feeForm"
+          data-confirm="{% if edit_class_id %}Update the monthly fee for this class?{% else %}Save this monthly fee structure?{% endif %}"
+          data-confirm-title="Confirm fee structure" data-confirm-label="Save fee">
         {% csrf_token %}
         <div class="field-card">
             <label>Class</label>

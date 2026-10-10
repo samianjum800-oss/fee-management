@@ -304,7 +304,9 @@
         <div class="cart-total">Pending Fee: ₹<span id="pendingTotalDisplay">0.00</span></div>
         <div class="cart-total">Total Due: ₹<span id="totalDue">0.00</span></div>
         <hr>
-        <form method="post" id="paymentForm" style="display: none;">
+        <form method="post" id="paymentForm" style="display: none;"
+              data-confirm="Process this payment using the selected amount, payment mode, and items?"
+              data-confirm-title="Confirm payment" data-confirm-label="Process payment">
             {% csrf_token %}
             <input type="hidden" name="process_payment" value="1">
             <input type="hidden" name="student_id" value="{{ selected_student.id }}">

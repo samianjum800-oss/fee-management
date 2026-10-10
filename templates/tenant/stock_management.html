@@ -866,7 +866,9 @@
             <h3 id="catModalTitle">Add Category</h3>
             <button class="close-modal" onclick="closeCategoryFormModal()">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_category' schema_name=tenant.schema_name %}" id="categoryForm">
+        <form method="post" action="{% url 'add_category' schema_name=tenant.schema_name %}" id="categoryForm"
+              data-confirm="Save this stock category?"
+              data-confirm-title="Save category" data-confirm-label="Save category">
             {% csrf_token %}
             <input type="hidden" name="category_id" id="catId">
             <div class="form-field">
@@ -892,7 +894,9 @@
             <h3 id="prodModalTitle">Add Product</h3>
             <button class="close-modal" onclick="closeProductModal()">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_product' schema_name=tenant.schema_name %}" id="productForm">
+        <form method="post" action="{% url 'add_product' schema_name=tenant.schema_name %}" id="productForm"
+              data-confirm="Save this stock item?"
+              data-confirm-title="Save stock item" data-confirm-label="Save item">
             {% csrf_token %}
             <input type="hidden" name="product_id" id="prodId">
             <div class="form-field">

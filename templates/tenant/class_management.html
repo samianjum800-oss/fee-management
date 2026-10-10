@@ -567,7 +567,9 @@
             <h3 id="classTeacherModalTitle">Assign Class Teacher</h3>
             <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'assign_class_teacher' schema_name=tenant.schema_name %}" id="classTeacherForm">
+        <form method="post" action="{% url 'assign_class_teacher' schema_name=tenant.schema_name %}" id="classTeacherForm"
+              data-confirm="Save this class teacher assignment? Choosing Unassign will remove the current class teacher."
+              data-confirm-title="Update class teacher" data-confirm-label="Save assignment">
             {% csrf_token %}
             <div class="form-field">
                 <label for="classTeacherSelect">Class</label>
@@ -603,7 +605,9 @@
             <h3 id="classModalTitle">Add Class</h3>
             <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm" data-add-url="{% url 'add_class' schema_name=tenant.schema_name %}">
+        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm" data-add-url="{% url 'add_class' schema_name=tenant.schema_name %}"
+              data-confirm="Save this class information?"
+              data-confirm-title="Save class" data-confirm-label="Save class">
             {% csrf_token %}
             <input type="hidden" name="class_id" id="classId">
             <div class="form-field">
@@ -634,7 +638,9 @@
             <h3 id="subjectModalTitle">Add Subject</h3>
             <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm" data-add-url="{% url 'add_subject' schema_name=tenant.schema_name %}">
+        <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm" data-add-url="{% url 'add_subject' schema_name=tenant.schema_name %}"
+              data-confirm="Save this subject information?"
+              data-confirm-title="Save subject" data-confirm-label="Save subject">
             {% csrf_token %}
             <input type="hidden" name="subject_id" id="subjectId">
             <div class="form-field">
@@ -664,7 +670,9 @@
             <h3 id="assignModalTitle">Assign Subject</h3>
             <button type="button" class="close-modal" data-modal-close aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm" data-add-url="{% url 'assign_subject' schema_name=tenant.schema_name %}">
+        <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm" data-add-url="{% url 'assign_subject' schema_name=tenant.schema_name %}"
+              data-confirm="Save this subject and teacher assignment?"
+              data-confirm-title="Save assignment" data-confirm-label="Save assignment">
             {% csrf_token %}
             <input type="hidden" name="assignment_id" id="assignmentId">
             <div class="form-field">

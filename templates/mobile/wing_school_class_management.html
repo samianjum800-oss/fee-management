@@ -327,7 +327,9 @@
             <h3 id="classModalTitle">Add Class</h3>
             <button class="close-modal" onclick="closeModal('classModal')">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm">
+        <form method="post" action="{% url 'add_class' schema_name=tenant.schema_name %}" id="classForm"
+              data-confirm="Save this class information?"
+              data-confirm-title="Save class" data-confirm-label="Save class">
             {% csrf_token %}
             <input type="hidden" name="class_id" id="classId">
                 <div class="form-field"><label>Campus / Wing</label>{{ class_form.wing_category }}</div>
@@ -359,7 +361,9 @@
             <h3 id="subjectModalTitle">Add Subject</h3>
             <button class="close-modal" onclick="closeModal('subjectModal')">&times;</button>
         </div>
-        <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm">
+        <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm"
+              data-confirm="Save this subject information?"
+              data-confirm-title="Save subject" data-confirm-label="Save subject">
             {% csrf_token %}
             <input type="hidden" name="subject_id" id="subjectId">
             <input type="hidden" name="mobile_redirect" value="1">
@@ -390,7 +394,9 @@
             <h3 id="assignModalTitle">Assign Subject</h3>
             <button class="close-modal" onclick="closeModal('assignModal')">&times;</button>
         </div>
-        <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm">
+        <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm"
+              data-confirm="Save this subject and teacher assignment?"
+              data-confirm-title="Save assignment" data-confirm-label="Save assignment">
             {% csrf_token %}
             <input type="hidden" name="assignment_id" id="assignmentId">
             <input type="hidden" name="mobile_redirect" value="1">

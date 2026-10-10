@@ -8,7 +8,8 @@
 </div>
 
 <div class="page-card">
-    <form method="post">
+    <form method="post" data-confirm="Process this family payment? The amount will be applied to eligible outstanding fees."
+          data-confirm-title="Confirm family payment" data-confirm-label="Process payment">
         {% csrf_token %}
         <div class="field-card">
             <label>Father CNIC</label>

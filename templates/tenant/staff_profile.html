@@ -124,12 +124,13 @@
         </span>
         <form method="post"
               action="{% url 'staff_toggle_biometric' schema_name=tenant.schema_name staff_id=staff.id %}"
-              style="margin-left:auto; display:inline;">
+              style="margin-left:auto; display:inline;"
+              data-confirm="{% if biometric_login_enabled %}Disable biometric login for this staff member? They will be able to sign in with username and password only.{% else %}Enable biometric login for this staff member?{% endif %}"
+              data-confirm-title="Change biometric access">
             {% csrf_token %}
             <input type="hidden" name="enabled" value="{% if biometric_login_enabled %}false{% else %}true{% endif %}">
             {% if biometric_login_enabled %}
-                <button type="submit" class="btn-secondary"
-                        onclick="return confirm('Disable biometric login for {{ staff.full_name|escapejs }}? They will be able to sign in with username and password only.');">
+                <button type="submit" class="btn-secondary">
                     Disable Biometric
                 </button>
             {% else %}
@@ -146,12 +147,16 @@
     <div class="info-card">
         <h3>Account Control</h3>
         <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:1rem;">
-            <form method="post" action="{% url 'staff_toggle_status' schema_name=tenant.schema_name staff_id=staff.id %}">
+            <form method="post" action="{% url 'staff_toggle_status' schema_name=tenant.schema_name staff_id=staff.id %}"
+                  data-confirm="{% if staff.status == 'active' %}Suspend this staff account? They will no longer be able to sign in.{% else %}Reactivate this staff account?{% endif %}"
+                  data-confirm-title="Change staff account status">
                 {% csrf_token %}
                 <input type="hidden" name="status" value="{% if staff.status == 'active' %}inactive{% else %}active{% endif %}">
                 <button type="submit" class="btn-secondary">{% if staff.status == 'active' %}Suspend{% else %}Activate{% endif %}</button>
             </form>
-            <form method="post" action="{% url 'staff_force_logout' schema_name=tenant.schema_name staff_id=staff.id %}">
+            <form method="post" action="{% url 'staff_force_logout' schema_name=tenant.schema_name staff_id=staff.id %}"
+                  data-confirm="End this staff member's active portal sessions? They will need to sign in again."
+                  data-confirm-title="Force staff logout">
                 {% csrf_token %}
                 <button type="submit" class="btn-secondary">Force Logout</button>
             </form>
@@ -161,7 +166,9 @@
 
 <div class="info-card" style="margin-top:1.5rem;">
     <h3>Reset Teacher Password</h3>
-    <form method="post" action="{% url 'staff_reset_password' schema_name=tenant.schema_name staff_id=staff.id %}" style="display:grid; gap:0.75rem; margin-top:1rem;">
+    <form method="post" action="{% url 'staff_reset_password' schema_name=tenant.schema_name staff_id=staff.id %}" style="display:grid; gap:0.75rem; margin-top:1rem;"
+          data-confirm="Reset this staff member's portal password? Their current password will stop working."
+          data-confirm-title="Reset staff password" data-confirm-danger="true" data-confirm-label="Reset password">
         {% csrf_token %}
         <input type="password" name="new_password" placeholder="New password" required>
         <input type="password" name="confirm_password" placeholder="Confirm new password" required>

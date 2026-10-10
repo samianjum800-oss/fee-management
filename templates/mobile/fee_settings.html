@@ -967,7 +967,13 @@
         window.location.reload();
     });
 
-    saveBtn.addEventListener('click', function() {
+    saveBtn.addEventListener('click', async function() {
+        const confirmed = await window.axisConfirmAction(
+            'Save the fee generation schedule, late fee, and default extra charges?',
+            { title: 'Save fee settings', confirmLabel: 'Save settings' }
+        );
+        if (!confirmed) return;
+
         const formData = new FormData();
         formData.append('csrfmiddlewaretoken', getCsrfToken());
         const genDay = document.querySelector('input[name="fee_generation_day"]');

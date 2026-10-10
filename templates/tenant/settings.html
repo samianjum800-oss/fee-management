@@ -17,7 +17,9 @@
             </svg>
             <h3>School Information</h3>
         </div>
-        <form method="post" enctype="multipart/form-data" class="settings-form">
+        <form method="post" enctype="multipart/form-data" class="settings-form"
+              data-confirm="Save the school profile and account security changes?"
+              data-confirm-title="Save portal settings" data-confirm-label="Save changes">
             {% csrf_token %}
             <div class="form-field">
                 <label>School Name</label>

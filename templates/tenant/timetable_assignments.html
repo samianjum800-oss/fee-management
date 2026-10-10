@@ -178,8 +178,9 @@
                             <a href="{% url 'timetable_periods' schema_name=tenant.schema_name %}?highlight={{ a.timetable.id }}"
                                class="btn-secondary btn-sm" style="text-decoration:none;">View</a>
                             <form method="post" action="{% url 'api_unassign_timetable' schema_name=tenant.schema_name %}"
-                                  style="display:inline-block;"
-                                  onsubmit="return confirm('Unassign {{ a.timetable.title|escapejs }} from {{ g.class_display_name|escapejs }}?');">
+                                  data-confirm="Unassign this timetable from the class?"
+                                  data-confirm-title="Unassign timetable" data-confirm-danger="true" data-confirm-label="Unassign"
+                                  style="display:inline-block;">
                                 {% csrf_token %}
                                 <input type="hidden" name="assignment_id" value="{{ a.id }}">
                                 <button type="submit" class="btn-danger btn-sm">Unassign</button>
@@ -213,7 +214,9 @@
 <div id="assignOverlay" class="overlay">
     <div class="overlay-content">
         <h2>Assign Timetable to Class</h2>
-        <form method="post" action="{% url 'api_assign_timetable' schema_name=tenant.schema_name %}" autocomplete="off">
+        <form method="post" action="{% url 'api_assign_timetable' schema_name=tenant.schema_name %}" autocomplete="off"
+              data-confirm="Assign this timetable to the selected class?"
+              data-confirm-title="Assign timetable" data-confirm-label="Assign timetable">
             {% csrf_token %}
             <div class="form-group">
                 <label for="assignClassSelect">Class *</label>

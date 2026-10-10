@@ -63,7 +63,9 @@
 
 <!-- Payment Form -->
 <div class="payment-section">
-    <form method="post" class="payment-form" id="paymentForm">
+    <form method="post" class="payment-form" id="paymentForm"
+          data-confirm="Process this payment using the selected amount, payment mode, and cart items?"
+          data-confirm-title="Confirm payment" data-confirm-label="Process payment">
         {% csrf_token %}
         <input type="hidden" name="student_id" value="{{ student.id }}">
         <input type="hidden" name="product_items_json" id="productItemsJson" value="[]">

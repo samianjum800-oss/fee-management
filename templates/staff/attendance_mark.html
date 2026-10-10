@@ -5,7 +5,8 @@
   <h2>{{ school_class.name }} - {{ school_class.section }}</h2>
   <div class="muted">Date: {{ attendance_date }}</div>
 </div>
-<form method="post">
+<form method="post" data-confirm="Save attendance for the selected class and date?"
+      data-confirm-title="Save attendance" data-confirm-label="Save attendance">
   {% csrf_token %}
   {% for student in students %}
   <div class="card">

@@ -110,7 +110,9 @@
         </div>
         <div class="pending-badge">Pending: ₹{{ total_pending }}</div>
     </div>
-    <form method="post" class="payment-form" id="paymentForm">
+    <form method="post" class="payment-form" id="paymentForm"
+          data-confirm="Record this payment for the selected student?"
+          data-confirm-title="Confirm payment" data-confirm-label="Process payment">
         {% csrf_token %}
         <input type="hidden" name="student_id" value="{{ selected_student.id }}">
         <input type="hidden" name="product_items_json" id="productItemsJson" value="[]">

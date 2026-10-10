@@ -8,7 +8,8 @@
     </div>
 </div>
 <div class="page-card">
-    <form method="post">
+    <form method="post" data-confirm="Submit this fee payment for {{ student.name }}?"
+          data-confirm-title="Confirm payment" data-confirm-label="Submit payment">
         {% csrf_token %}
         <div class="field-card"><label>Amount (Rs)</label>{{ form.amount }}</div>
         <div class="field-card"><label>Payment Mode</label>{{ form.payment_mode }}</div>

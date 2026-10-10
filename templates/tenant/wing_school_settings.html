@@ -17,7 +17,9 @@
             </svg>
             <h3>School Information</h3>
         </div>
-        <form method="post" enctype="multipart/form-data" class="settings-form">
+        <form method="post" enctype="multipart/form-data" class="settings-form"
+              data-confirm="Save the school profile and account security changes?"
+              data-confirm-title="Save portal settings" data-confirm-label="Save changes">
             {% csrf_token %}
             <div class="form-field">
                 <label>School Name</label>
@@ -81,7 +83,9 @@
 <div class="settings-card" style="margin-bottom:1.5rem;">
     <div class="card-header" style="justify-content:space-between;"><h3>Campuses and Wings</h3><button type="button" class="btn-secondary" id="addCategoryButton">Add New</button></div>
     <div class="settings-form" id="categoryEditor" hidden>
-        <form method="post" class="settings-form" style="padding:0;">
+        <form method="post" class="settings-form" style="padding:0;"
+              data-confirm="Save these campus and wing changes?"
+              data-confirm-title="Update campuses and wings" data-confirm-label="Save changes">
             {% csrf_token %}
             <input type="hidden" name="category_action" value="add" id="categoryAction">
             <input type="hidden" name="category_id" id="categoryId">

@@ -611,7 +611,9 @@
 <div class="bottom-sheet" id="productSheet">
   <div class="sheet-handle"></div>
   <h3 id="productSheetTitle">Add Product</h3>
-  <form method="post" action="{% url 'add_product' schema_name=tenant.schema_name %}" id="productForm">
+  <form method="post" action="{% url 'add_product' schema_name=tenant.schema_name %}" id="productForm"
+        data-confirm="Save this stock item?"
+        data-confirm-title="Save stock item" data-confirm-label="Save item">
     {% csrf_token %}
         <input type="hidden" name="mobile_redirect" value="1">
     <input type="hidden" name="product_id" id="productId">
@@ -667,7 +669,9 @@
       <div class="empty-state">No categories yet.</div>
       {% endfor %}
     </div>
-    <form method="post" action="{% url 'add_category' schema_name=tenant.schema_name %}" id="addCategoryForm" style="margin-top:1rem;">
+    <form method="post" action="{% url 'add_category' schema_name=tenant.schema_name %}" id="addCategoryForm" style="margin-top:1rem;"
+          data-confirm="Save this stock category?"
+          data-confirm-title="Save category" data-confirm-label="Save category">
       {% csrf_token %}
       <input type="hidden" name="mobile_redirect" value="1">
       <input type="hidden" name="category_id" id="editCatId">

@@ -18,7 +18,9 @@
 {% endif %}
 <div class="card">
   <h3>Change Password</h3>
-  <form method="post" action="{% url 'staff_change_password' %}">
+  <form method="post" action="{% url 'staff_change_password' %}"
+        data-confirm="Change your staff portal password?"
+        data-confirm-title="Change password" data-confirm-label="Change password">
     {% csrf_token %}
     <div style="display:grid;gap:10px;">
       <input type="password" name="old_password" placeholder="Current password" required>

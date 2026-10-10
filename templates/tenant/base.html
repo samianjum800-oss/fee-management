@@ -3,6 +3,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
+    <link rel="stylesheet" href="{% static 'css/confirm_dialog.css' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}AXIS School Portal{% endblock %}</title>
@@ -1404,5 +1405,6 @@
     {% block extra_body %}{% endblock %}
     {% block extra_body_js %}{% endblock %}
     {% block extra_scripts %}{% endblock %}
+    <script src="{% static 'js/confirm_dialog.js' %}"></script>
 </body>
 </html>

@@ -8,7 +8,8 @@
 </div>
 
 <div class="page-card">
-    <form method="post">
+    <form method="post" data-confirm="Generate fee records for the selected month and year? This may create records for many students."
+          data-confirm-title="Generate monthly fees" data-confirm-danger="true" data-confirm-label="Generate fees">
         {% csrf_token %}
         <div class="field-card">
             <label>Month</label>

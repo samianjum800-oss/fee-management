@@ -294,7 +294,9 @@
             </div>
             <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'fee_structure' schema_name=tenant.schema_name %}" class="class-tools-form">
+        <form method="post" action="{% url 'fee_structure' schema_name=tenant.schema_name %}" class="class-tools-form"
+              data-confirm="Save the monthly fee for the selected class?"
+              data-confirm-title="Save class fee" data-confirm-label="Save fee">
             {% csrf_token %}
             <input type="hidden" name="return_to" value="classes_management">
             <input type="hidden" name="class_id" id="feeEditClass" required>
@@ -359,7 +361,9 @@
             </div>
             <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}" class="class-tools-form">
+        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}" class="class-tools-form"
+              data-confirm="Add this campus or wing?"
+              data-confirm-title="Add campus or wing" data-confirm-label="Add">
             {% csrf_token %}
             <input type="hidden" name="return_to" value="classes_management">
             <input type="hidden" name="category_action" value="add">
@@ -397,7 +401,9 @@
             </div>
             <button type="button" class="class-tools-close" data-close-tools aria-label="Close">&times;</button>
         </div>
-        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}" class="class-tools-form" id="campusEditForm">
+        <form method="post" action="{% url 'settings' schema_name=tenant.schema_name %}" class="class-tools-form" id="campusEditForm"
+              data-confirm="Save these campus and wing changes?"
+              data-confirm-title="Update campus" data-confirm-label="Save changes">
             {% csrf_token %}
             <input type="hidden" name="return_to" value="classes_management">
             <input type="hidden" name="category_action" value="manage" id="campusEditAction">

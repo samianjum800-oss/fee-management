@@ -3,6 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="{% static 'css/confirm_dialog.css' %}">
     <link rel="manifest" href="/portal/{{ tenant.schema_name|default:'public' }}/manifest.json">
     <meta name="theme-color" content="#ffffff" id="themeColorMeta">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -500,6 +501,7 @@
 
     {% include "tenant/voucher_modal.html" %}
     <script src="{% static 'js/offline_student.js' %}"></script>
+    <script src="{% static 'js/confirm_dialog.js' %}"></script>
     <script>
         window.AXIS_SCHEMA = '{{ tenant.schema_name }}';
     // Register service worker for offline support

@@ -802,7 +802,14 @@ window.TT_URLS = {
         }
     });
 
-    if (saveBtn) saveBtn.addEventListener('click', saveAssignments);
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+        window.axisConfirmAction('Save the teacher and period assignments for this class?', {
+            title: 'Save timetable assignments',
+            confirmLabel: 'Save assignments'
+        }).then(function (confirmed) {
+            if (confirmed) saveAssignments();
+        });
+    });
 
     // "Manage" buttons in the table
     document.querySelectorAll('.open-manage-btn').forEach(function (btn) {

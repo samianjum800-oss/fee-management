@@ -818,7 +818,9 @@
     <button class="m-close" id="closeEditModal">&times;</button>
     <h2>Edit Student</h2>
     <div class="m-sub">Update student information</div>
-    <form id="editForm" method="post" action="{% url 'edit_student' schema_name=tenant.schema_name student_id=student.id %}">
+    <form id="editForm" method="post" action="{% url 'edit_student' schema_name=tenant.schema_name student_id=student.id %}"
+          data-confirm="Save the student profile changes?"
+          data-confirm-title="Update student" data-confirm-label="Save changes">
       {% csrf_token %}
       <div class="form-group"><label>Name</label><input type="text" name="name" value="{{ student.name }}" required></div>
       <div class="form-group"><label>Father Name</label><input type="text" name="father_name" value="{{ student.father_name }}" required></div>

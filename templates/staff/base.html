@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="{% static 'css/confirm_dialog.css' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}Staff Portal{% endblock %}</title>
@@ -46,7 +47,10 @@
         .status.present { background: rgba(22,163,74,.1); color: var(--success); }
         .status.absent { background: rgba(220,38,38,.1); color: var(--danger); }
         .status.late { background: rgba(245,158,11,.12); color: var(--warning); }
-        .alert { padding: 10px 12px; background: rgba(37,99,235,.08); border-left: 4px solid var(--accent); border-radius: 8px; }
+        .alert { padding: 10px 12px; margin-bottom: 10px; background: rgba(37,99,235,.08); border-left: 4px solid var(--accent); border-radius: 8px; }
+        .alert.success { background: rgba(22,163,74,.1); border-color: var(--success); color: #166534; }
+        .alert.error, .alert.danger { background: rgba(220,38,38,.1); border-color: var(--danger); color: #991b1b; }
+        .alert.warning { background: rgba(245,158,11,.14); border-color: var(--warning); color: #854d0e; }
         .danger { color: var(--danger); }
         @media (max-width: 480px) { .nav { font-size: 11px; } }
     </style>
@@ -66,9 +70,10 @@
     </div>
     <div class="container">
         {% if messages %}
-            {% for message in messages %}<div class="alert">{{ message }}</div>{% endfor %}
+            {% for message in messages %}<div class="alert {{ message.tags }}" role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}" aria-live="{% if message.tags == 'error' %}assertive{% else %}polite{% endif %}">{{ message }}</div>{% endfor %}
         {% endif %}
         {% block content %}{% endblock %}
     </div>
+    <script src="{% static 'js/confirm_dialog.js' %}"></script>
 </body>
 </html>

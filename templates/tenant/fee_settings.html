@@ -248,7 +248,9 @@
             </svg>
             <h3>Automation Rules</h3>
         </div>
-        <form method="post" id="settingsForm" class="settings-form">
+        <form method="post" id="settingsForm" class="settings-form"
+              data-confirm="Save the fee generation schedule, late fee, and default extra charges?"
+              data-confirm-title="Save fee settings" data-confirm-label="Save settings">
             {% csrf_token %}
             <div class="form-field">
                 <label>Generation Day of Month</label>
@@ -319,7 +321,9 @@
                 <span class="status-indicator {% if automation_enabled %}active{% else %}inactive{% endif %}">
                     {% if automation_enabled %}● Active{% else %}● Inactive{% endif %}
                 </span>
-                <form method="post" style="display: inline;">
+                <form method="post" style="display: inline;"
+                      data-confirm="{% if automation_enabled %}Stop automatic monthly fee generation?{% else %}Enable automatic monthly fee generation?{% endif %}"
+                      data-confirm-title="Change fee automation">
                     {% csrf_token %}
                     <input type="hidden" name="toggle_automation" value="1">
                     <button type="submit" class="btn-toggle {% if automation_enabled %}stop{% else %}start{% endif %}"

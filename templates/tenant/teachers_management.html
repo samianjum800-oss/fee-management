@@ -552,7 +552,9 @@
       <h3 id="subjectModalTitle">Add Subject</h3>
       <button type="button" class="tm-modal-close" onclick="closeModal('subjectModal')">&times;</button>
     </div>
-    <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm">
+    <form method="post" action="{% url 'add_subject' schema_name=tenant.schema_name %}" id="subjectForm"
+          data-confirm="Save this subject information?"
+          data-confirm-title="Save subject" data-confirm-label="Save subject">
       {% csrf_token %}
       <input type="hidden" name="subject_id" id="subjectId">
       <div class="tm-field">
@@ -581,7 +583,9 @@
       <h3 id="assignModalTitle">Assign Subject</h3>
       <button type="button" class="tm-modal-close" onclick="closeModal('assignModal')">&times;</button>
     </div>
-    <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm">
+    <form method="post" action="{% url 'assign_subject' schema_name=tenant.schema_name %}" id="assignForm"
+          data-confirm="Save this subject and teacher assignment?"
+          data-confirm-title="Save assignment" data-confirm-label="Save assignment">
       {% csrf_token %}
       <input type="hidden" name="assignment_id" id="assignmentId">
       <div class="tm-field">
@@ -629,7 +633,9 @@
       <h3>Assign Class Teacher</h3>
       <button type="button" class="tm-modal-close" onclick="closeModal('classTeacherModal')">&times;</button>
     </div>
-    <form method="post" action="{% url 'assign_class_teacher' schema_name=tenant.schema_name %}" id="classTeacherForm">
+    <form method="post" action="{% url 'assign_class_teacher' schema_name=tenant.schema_name %}" id="classTeacherForm"
+          data-confirm="Save this class teacher assignment? Choosing Unassign will remove the current class teacher."
+          data-confirm-title="Update class teacher" data-confirm-label="Save assignment">
       {% csrf_token %}
       <div class="tm-field">
         <label>Class</label>
