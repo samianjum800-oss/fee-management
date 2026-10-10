@@ -10,8 +10,9 @@ AXIS has two related administration areas: **Classes Management** for class reco
 2. Open **Classes Management** to view the school's active class cards. Choose the add-class control.
 3. For a wing school, select the campus/wing. Enter the class name and section, then save.
 4. Open a class card to view its student roster and details.
-5. To change a class, use its edit action. To stop using a class, use the deactivate action; this is not the same as deleting its students.
-6. Add or move students from each student's [profile](students.md).
+5. Use the **Timetable** action on a class card to open that class's periods timetable.
+6. To change a class, use its edit action. To stop using a class, use the deactivate action; this is not the same as deleting its students.
+7. Add or move students from each student's [profile](students.md).
 
 Class names are normalized by AXIS. A class name and section must be unique within the selected wing; the same class label may be used under another wing.
 
@@ -77,8 +78,8 @@ Staff profile: personal details | class/subject assignments | login status
 
 ## FAQ
 
-### Does deactivating a class remove its students?
-No. Class deactivation marks the class inactive. Check student profiles and move students to another active class if needed.
+### Does deactivating a class remove its students or timetable?
+No. Class deactivation keeps the class record and its linked students, timetable, teacher assignments, and other class settings. Adding the same class name and section in the same wing restores that class and its existing links rather than creating a blank class.
 
 ### Does deleting a subject erase prior attendance or timetables?
 Subjects are deactivated from the management workflow. Review linked assignments and timetable use before changing the catalogue.

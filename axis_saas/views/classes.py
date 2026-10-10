@@ -153,14 +153,46 @@ def add_class(request, schema_name):
     """Add a new class."""
     with schema_context(schema_name):
         tenant = get_tenant(request, schema_name)
-        form = ClassForm(request.POST, wing_school=tenant.tenant_type == 'wing_school')
+        wing_school = tenant.tenant_type == 'wing_school'
+        class_name = (request.POST.get('name') or '').strip().title()
+        section = (request.POST.get('section') or '').strip().upper()
+        inactive_class = None
+        if class_name:
+            inactive_classes = SchoolClass.objects.filter(
+                is_active=False,
+                name__iexact=class_name,
+                section__iexact=section,
+            )
+            if wing_school:
+                wing_id = request.POST.get('wing_category') or ''
+                if wing_id.isdecimal():
+                    inactive_classes = inactive_classes.filter(wing_category_id=int(wing_id))
+                else:
+                    inactive_classes = inactive_classes.none()
+            else:
+                inactive_classes = inactive_classes.filter(wing_category__isnull=True)
+            inactive_class = inactive_classes.first()
+
+        form = ClassForm(
+            request.POST,
+            instance=inactive_class,
+            wing_school=wing_school,
+        )
         is_valid = form.is_valid()
         if is_valid:
-            cls = form.save(commit=False)
-            cls.is_active = True
             try:
-                cls.save()
-                messages.success(request, f"Class '{cls}' added successfully.")
+                if inactive_class:
+                    # Reactivate the existing row so its students, timetable,
+                    # teacher assignments, and other class-linked records remain attached.
+                    inactive_class.is_active = True
+                    inactive_class.save(update_fields=['is_active', 'updated_at'])
+                    cls = inactive_class
+                    messages.success(request, f"Class '{cls}' restored with its saved records.")
+                else:
+                    cls = form.save(commit=False)
+                    cls.is_active = True
+                    cls.save()
+                    messages.success(request, f"Class '{cls}' added successfully.")
             except (ValidationError, IntegrityError) as error:
                 is_valid = False
                 if isinstance(error, IntegrityError):

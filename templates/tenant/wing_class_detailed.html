@@ -2349,6 +2349,10 @@
         if (overlay) overlay.addEventListener('click', function (e) {
             if (e.target === overlay) closeTimetableModal();
         });
+        if (new URLSearchParams(window.location.search).get('show_timetable') === '1') {
+            renderClassTimetable();
+            openTimetableModal();
+        }
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && overlay && overlay.classList.contains('active')) {
                 closeTimetableModal();
