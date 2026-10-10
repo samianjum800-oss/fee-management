@@ -1,7 +1,7 @@
 {% extends 'tenant/base.html' %}
 {% load class_display %}
 {% load fee_extras %}
-{% block title %}Financial Reports | {{ tenant.name }}{% endblock %}
+{% block title %}School Reports | {{ tenant.name }}{% endblock %}
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -294,14 +294,100 @@
     color: white;
     border-radius: 2rem;
 }
+.report-jump-nav, .report-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.report-jump-nav {
+    margin: 0 0 1.25rem;
+    padding: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+}
+.report-jump-nav a, .report-action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text);
+    background: var(--surface-alt);
+    text-decoration: none;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+.report-jump-nav a:hover, .report-action-link:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.report-section {
+    margin: 1.5rem 0;
+    padding: 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    scroll-margin-top: 1rem;
+}
+.report-section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.report-section-heading h2 { font-size: 1.15rem; margin: 0; }
+.report-section-heading p { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
+.report-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 0.7rem;
+    margin: 0.8rem 0 1.1rem;
+}
+.report-stat {
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    background: var(--surface-alt);
+    min-width: 0;
+}
+.report-stat span { display: block; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; }
+.report-stat strong { display: block; margin-top: 0.2rem; font-size: 1.2rem; overflow-wrap: anywhere; }
+.report-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1rem; }
+.report-subsection { min-width: 0; }
+.report-subsection h3 { font-size: 0.98rem; margin: 0 0 0.65rem; }
+.report-note { color: var(--muted); font-size: 0.78rem; margin: 0.6rem 0; }
+.report-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 0.55rem; }
+.report-table { width: 100%; border-collapse: collapse; min-width: 520px; }
+.report-table th, .report-table td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+.report-table th { color: var(--muted); background: var(--surface-alt); font-size: 0.7rem; text-transform: uppercase; }
+.report-table tr:last-child td { border-bottom: 0; }
+.report-status { display: inline-flex; padding: 0.18rem 0.5rem; border-radius: 1rem; background: var(--surface-alt); font-size: 0.73rem; font-weight: 700; }
+.report-status.online, .report-status.approved, .report-status.present { color: #047857; background: #d1fae5; }
+.report-status.offline, .report-status.absent, .report-status.rejected { color: #b91c1c; background: #fee2e2; }
+.report-status.pending, .report-status.late, .report-status.low { color: #92400e; background: #fef3c7; }
+[data-theme="dark"] .report-status.online, [data-theme="dark"] .report-status.approved, [data-theme="dark"] .report-status.present { color: #a7f3d0; background: #064e3b; }
+[data-theme="dark"] .report-status.offline, [data-theme="dark"] .report-status.absent, [data-theme="dark"] .report-status.rejected { color: #fecaca; background: #7f1d1d; }
+[data-theme="dark"] .report-status.pending, [data-theme="dark"] .report-status.late, [data-theme="dark"] .report-status.low { color: #fde68a; background: #78350f; }
+.report-inline-link { color: var(--primary); font-weight: 600; text-decoration: none; }
+.report-inline-link:hover { text-decoration: underline; }
+@media (max-width: 640px) {
+    .report-section { padding: 0.8rem; }
+    .report-section-heading { flex-direction: column; }
+    .filter-row { align-items: stretch; }
+    .custom-date-form { width: 100%; }
+}
 </style>
 {% endblock %}
 
 {% block body %}
-<div class="page-header">
+<div class="page-header" id="overview">
     <div>
-        <h1 class="page-title">Financial Reports</h1>
-        <p class="page-desc">Complete analytics and transaction history</p>
+        <h1 class="page-title">School Reports</h1>
+        <p class="page-desc">Financial, academic, attendance, staff, leave and inventory activity for {{ start_date|date:"d M Y" }} to {{ end_date|date:"d M Y" }}</p>
     </div>
 </div>
 
@@ -311,8 +397,12 @@
         <div class="quick-filters">
             <span class="filter-label">Quick Range:</span>
             <a href="?type={{ report_type }}&quick_filter=today" class="quick-filter-btn {% if quick_filter == 'today' %}active{% endif %}">Today</a>
+            <a href="?type={{ report_type }}&quick_filter=yesterday" class="quick-filter-btn {% if quick_filter == 'yesterday' %}active{% endif %}">Yesterday</a>
             <a href="?type={{ report_type }}&quick_filter=week" class="quick-filter-btn {% if quick_filter == 'week' %}active{% endif %}">This Week</a>
+            <a href="?type={{ report_type }}&quick_filter=last7days" class="quick-filter-btn {% if quick_filter == 'last7days' %}active{% endif %}">7 Days</a>
+            <a href="?type={{ report_type }}&quick_filter=last30days" class="quick-filter-btn {% if quick_filter == 'last30days' %}active{% endif %}">30 Days</a>
             <a href="?type={{ report_type }}&quick_filter=month" class="quick-filter-btn {% if quick_filter == 'month' %}active{% endif %}">This Month</a>
+            <a href="?type={{ report_type }}&quick_filter=quarter" class="quick-filter-btn {% if quick_filter == 'quarter' %}active{% endif %}">This Quarter</a>
             <a href="?type={{ report_type }}&quick_filter=year" class="quick-filter-btn {% if quick_filter == 'year' %}active{% endif %}">This Year</a>
             <a href="?type={{ report_type }}&quick_filter=all" class="quick-filter-btn {% if quick_filter == 'all' %}active{% endif %}">All Time</a>
             <a href="?type={{ report_type }}&quick_filter=last6months" class="quick-filter-btn {% if quick_filter == 'last6months' %}active{% endif %}">Last 6 Months</a>
@@ -330,8 +420,24 @@
             <button type="submit" class="btn-filter">Apply</button>
             <a href="?type={{ report_type }}" class="btn-reset">Reset</a>
         </form>
+        <div class="report-quick-actions">
+            <a class="report-action-link" href="?format=csv&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" title="Download filtered collection transactions as CSV">Download CSV</a>
+            <button class="report-action-link" type="button" onclick="window.print()" title="Print this report">Print report</button>
+        </div>
     </div>
 </div>
+
+<nav class="report-jump-nav" aria-label="Report sections">
+    <a href="#school-overview">School overview</a>
+    <a href="#attendance">Attendance</a>
+    <a href="#staff-portal">Staff portal</a>
+    <a href="#leave">Leave</a>
+    <a href="#inventory">Inventory &amp; sales</a>
+    <a href="#audit-trail">Audit &amp; fee runs</a>
+    <a href="#financial-charts">Financial trends</a>
+    <a href="?type=collection&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}#transactions">Transactions</a>
+    <a href="?type=defaulters&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}#defaulters">Defaulters</a>
+</nav>
 
 <!-- KPI Cards -->
 <div class="kpi-grid">
@@ -370,7 +476,7 @@
 </div>
 
 <!-- Charts Row -->
-<div class="charts-row">
+<div class="charts-row" id="financial-charts">
     <div class="chart-card">
         <div class="chart-header"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M18 17V9M12 17V5M6 17v-3"/></svg><h3>Monthly Collection Trend</h3></div>
         <canvas id="trendChart" height="200"></canvas>
@@ -400,6 +506,8 @@
     </div>
 </div>
 
+{% include 'tenant/reports/operations.html' %}
+
 <!-- Tabs -->
 <div class="tabs">
     <a href="?type=collection&{% if start_date %}start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&{% endif %}{% if quick_filter %}quick_filter={{ quick_filter }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" class="tab {% if report_type == 'collection' %}active{% endif %}">Collection Details</a>
@@ -407,7 +515,7 @@
 </div>
 
 {% if report_type == 'collection' %}
-<div class="table-card">
+<div class="table-card" id="transactions">
     <div class="table-header">
         <h3>Transaction History</h3>
         <div class="table-total">Total: ₹{{ total|floatformat:2 }} ({{ payment_count }} transactions)</div>
@@ -466,7 +574,7 @@
     {% endif %}
 </div>
 {% else %}
-<div class="table-card">
+<div class="table-card" id="defaulters">
     <div class="table-header">
         <h3>All Defaulters</h3>
         <div class="table-total">{{ defaulters_data|length }} students</div>
@@ -502,7 +610,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const monthlyData = {{ monthly_data|safe }};
-    if (monthlyData && monthlyData.length > 0 && monthlyData.some(item => item.total_amount > 0)) {
+    if (monthlyData && monthlyData.length > 0 && monthlyData.some(item => item.amount > 0)) {
         const ctx = document.getElementById('trendChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
@@ -510,7 +618,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 labels: monthlyData.map(item => item.month),
                 datasets: [{
                     label: 'Collection (₹)',
-                    data: monthlyData.map(item => item.total_amount),
+                    data: monthlyData.map(item => item.amount),
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59,130,246,0.1)',
                     fill: true,
@@ -532,7 +640,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: {
                 labels: modeData.map(item => item.name),
                 datasets: [{
-                    data: modeData.map(item => item.total_amount),
+                    data: modeData.map(item => item.amount),
                     backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
                 }]
             }

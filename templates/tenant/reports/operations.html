@@ -1,0 +1,270 @@
+<section class="report-section" id="school-overview">
+    <div class="report-section-heading">
+        <div>
+            <h2>School overview</h2>
+            <p>Current enrolment and academic structure</p>
+        </div>
+        <a class="report-inline-link" href="{% url 'student_list' schema_name=tenant.schema_name %}">Open students</a>
+    </div>
+    <div class="report-stat-grid">
+        <div class="report-stat"><span>All students</span><strong>{{ student_count }}</strong></div>
+        <div class="report-stat"><span>Active</span><strong>{{ student_status_counts.active|default:0 }}</strong></div>
+        <div class="report-stat"><span>Suspended</span><strong>{{ student_status_counts.suspended|default:0 }}</strong></div>
+        <div class="report-stat"><span>Graduated</span><strong>{{ student_status_counts.graduated|default:0 }}</strong></div>
+        <div class="report-stat"><span>Classes</span><strong>{{ academic_totals.classes }}</strong></div>
+        <div class="report-stat"><span>Subjects</span><strong>{{ academic_totals.subjects }}</strong></div>
+        <div class="report-stat"><span>Timetable entries</span><strong>{{ academic_totals.timetable_entries }}</strong></div>
+    </div>
+</section>
+
+<section class="report-section" id="attendance">
+    <div class="report-section-heading">
+        <div>
+            <h2>Attendance</h2>
+            <p>Attendance entries recorded during the selected reporting period</p>
+        </div>
+    </div>
+    <div class="report-columns">
+        <div class="report-subsection">
+            <h3>Student attendance</h3>
+            <div class="report-stat-grid">
+                <div class="report-stat"><span>Entries</span><strong>{{ student_attendance.total }}</strong></div>
+                <div class="report-stat"><span>Attendance rate</span><strong>{{ student_attendance.rate }}%</strong></div>
+                <div class="report-stat"><span>Present</span><strong>{{ student_attendance.present }}</strong></div>
+                <div class="report-stat"><span>Late / half day</span><strong>{{ student_attendance.late|add:student_attendance.half_day }}</strong></div>
+                <div class="report-stat"><span>Absent</span><strong>{{ student_attendance.absent }}</strong></div>
+                <div class="report-stat"><span>Excused</span><strong>{{ student_attendance.excused }}</strong></div>
+            </div>
+            <p class="report-note">Rate uses present, late, half-day and absent marks; excused entries are excluded. Period-wise marks count as separate entries.</p>
+            <h3>Most absent students</h3>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>Student</th><th>Class</th><th>Absent entries</th><th>Profile</th></tr></thead>
+                    <tbody>
+                        {% for row in most_absent_students %}
+                        <tr>
+                            <td>{{ row.student__name }}</td>
+                            <td>{{ row.student__grade }} - {{ row.student__section }}</td>
+                            <td><span class="report-status absent">{{ row.absences }}</span></td>
+                            <td><a class="report-inline-link" href="{% url 'student_profile' schema_name=tenant.schema_name student_id=row.student_id %}">View</a></td>
+                        </tr>
+                        {% empty %}<tr><td colspan="4">No absences in this period.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="report-subsection">
+            <h3>Staff attendance</h3>
+            <div class="report-stat-grid">
+                <div class="report-stat"><span>Entries</span><strong>{{ staff_attendance.total }}</strong></div>
+                <div class="report-stat"><span>Attendance rate</span><strong>{{ staff_attendance.rate }}%</strong></div>
+                <div class="report-stat"><span>Present</span><strong>{{ staff_attendance.present }}</strong></div>
+                <div class="report-stat"><span>Late / half day</span><strong>{{ staff_attendance.late|add:staff_attendance.half_day }}</strong></div>
+                <div class="report-stat"><span>Absent</span><strong>{{ staff_attendance.absent }}</strong></div>
+                <div class="report-stat"><span>On leave</span><strong>{{ staff_attendance.on_leave }}</strong></div>
+            </div>
+            <p class="report-note">Rate excludes on-leave rows and is based on recorded attendance entries in the selected period.</p>
+            <h3>Most absent staff</h3>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>Staff member</th><th>Role</th><th>Absent entries</th><th>Profile</th></tr></thead>
+                    <tbody>
+                        {% for row in most_absent_staff %}
+                        <tr>
+                            <td>{{ row.staff__full_name }}</td>
+                            <td>{{ row.staff__job_title }}</td>
+                            <td><span class="report-status absent">{{ row.absences }}</span></td>
+                            <td><a class="report-inline-link" href="{% url 'staff_profile' schema_name=tenant.schema_name staff_id=row.staff_id %}">View</a></td>
+                        </tr>
+                        {% empty %}<tr><td colspan="4">No staff absences in this period.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <a class="report-inline-link" href="{% url 'staff_list' schema_name=tenant.schema_name %}">Review staff records</a>
+        </div>
+    </div>
+</section>
+
+<section class="report-section" id="staff-portal">
+    <div class="report-section-heading">
+        <div>
+            <h2>Staff portal presence</h2>
+            <p>Current session signal and latest successful sign-in</p>
+        </div>
+        <div><strong>{{ online_staff_count }}</strong> online / {{ staff_count }} staff</div>
+    </div>
+    <p class="report-note">All currently online staff and the 20 most recently signed-in offline accounts are shown. Online status reflects the session signal; the system stores last sign-in timestamps, not a page-by-page staff activity log.</p>
+    <div class="report-table-wrap">
+        <table class="report-table">
+            <thead><tr><th>Staff member</th><th>Role / department</th><th>Account</th><th>Portal</th><th>Last sign-in</th><th>Profile</th></tr></thead>
+            <tbody>
+                {% for item in staff_activity %}
+                <tr>
+                    <td><strong>{{ item.staff.full_name }}</strong><br><small>{{ item.staff.staff_id }} · {{ item.staff.job_title }}</small></td>
+                    <td>{{ item.staff.get_department_display }}</td>
+                    <td><span class="report-status {% if item.staff.status == 'active' %}approved{% else %}rejected{% endif %}">{{ item.staff.get_status_display }}</span></td>
+                    <td><span class="report-status {% if item.is_online %}online{% else %}offline{% endif %}">{% if item.is_online %}Online{% else %}Offline{% endif %}</span></td>
+                    <td>{% if item.last_login %}{{ item.last_login|date:"d M Y, h:i A" }}{% else %}<span class="report-note">Never signed in</span>{% endif %}</td>
+                    <td><a class="report-inline-link" href="{% url 'staff_profile' schema_name=tenant.schema_name staff_id=item.staff.id %}">View profile</a></td>
+                </tr>
+                {% empty %}<tr><td colspan="6">No staff accounts found.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section" id="leave">
+    <div class="report-section-heading">
+        <div>
+            <h2>Leave requests</h2>
+            <p>Requests submitted during the selected reporting period</p>
+        </div>
+    </div>
+    <div class="report-columns">
+        <div class="report-subsection">
+            <h3>Staff leave</h3>
+            <div class="report-stat-grid">
+                <div class="report-stat"><span>Pending</span><strong>{{ leave_status_counts.pending|default:0 }}</strong></div>
+                <div class="report-stat"><span>Approved</span><strong>{{ leave_status_counts.approved|default:0 }}</strong></div>
+                <div class="report-stat"><span>Rejected</span><strong>{{ leave_status_counts.rejected|default:0 }}</strong></div>
+                <div class="report-stat"><span>Cancelled</span><strong>{{ leave_status_counts.cancelled|default:0 }}</strong></div>
+            </div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>Staff</th><th>Dates</th><th>Type</th><th>Status</th><th>Profile</th></tr></thead>
+                    <tbody>
+                        {% for leave in recent_leave_requests %}
+                        <tr>
+                            <td>{{ leave.staff.full_name }}</td>
+                            <td>{{ leave.start_date|date:"d M Y" }} – {{ leave.end_date|date:"d M Y" }}<br><small>{{ leave.total_days }} day{{ leave.total_days|pluralize }}</small></td>
+                            <td>{{ leave.get_leave_type_display }}</td>
+                            <td><span class="report-status {{ leave.status }}">{{ leave.get_status_display }}</span></td>
+                            <td><a class="report-inline-link" href="{% url 'staff_profile' schema_name=tenant.schema_name staff_id=leave.staff_id %}">View</a></td>
+                        </tr>
+                        {% empty %}<tr><td colspan="5">No staff leave requests in this period.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="report-subsection">
+            <h3>Student leave</h3>
+            <div class="report-stat-grid">
+                <div class="report-stat"><span>Pending</span><strong>{{ student_leave_counts.pending|default:0 }}</strong></div>
+                <div class="report-stat"><span>Approved</span><strong>{{ student_leave_counts.approved|default:0 }}</strong></div>
+                <div class="report-stat"><span>Rejected</span><strong>{{ student_leave_counts.rejected|default:0 }}</strong></div>
+                <div class="report-stat"><span>Cancelled</span><strong>{{ student_leave_counts.cancelled|default:0 }}</strong></div>
+            </div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>Student</th><th>Dates</th><th>Status</th><th>Profile</th></tr></thead>
+                    <tbody>
+                        {% for leave in recent_student_leaves %}
+                        <tr>
+                            <td>{{ leave.student.name }}<br><small>{{ leave.student.roll_number }}</small></td>
+                            <td>{{ leave.start_date|date:"d M Y" }} – {{ leave.end_date|date:"d M Y" }}</td>
+                            <td><span class="report-status {{ leave.status }}">{{ leave.get_status_display }}</span></td>
+                            <td><a class="report-inline-link" href="{% url 'student_profile' schema_name=tenant.schema_name student_id=leave.student_id %}">View</a></td>
+                        </tr>
+                        {% empty %}<tr><td colspan="4">No student leave requests in this period.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="report-section" id="inventory">
+    <div class="report-section-heading">
+        <div>
+            <h2>Inventory and sales</h2>
+            <p>Stock is current; sales use transactions in the selected reporting period</p>
+        </div>
+    </div>
+    <div class="report-stat-grid">
+        <div class="report-stat"><span>Products</span><strong>{{ inventory.products }}</strong></div>
+        <div class="report-stat"><span>Units in stock</span><strong>{{ inventory.units }}</strong></div>
+        <div class="report-stat"><span>Retail stock value</span><strong>₹{{ inventory.stock_value|floatformat:2 }}</strong></div>
+        <div class="report-stat"><span>Sales revenue</span><strong>₹{{ sales.revenue|floatformat:2 }}</strong></div>
+        <div class="report-stat"><span>Units sold</span><strong>{{ sales.units }}</strong></div>
+        <div class="report-stat"><span>Sale lines</span><strong>{{ sales.lines }}</strong></div>
+    </div>
+    <div class="report-columns">
+        <div class="report-subsection">
+            <h3>Low stock (5 units or fewer)</h3>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>Product</th><th>Category</th><th>SKU</th><th>Quantity</th></tr></thead>
+                    <tbody>
+                        {% for product in low_stock_products %}
+                        <tr><td>{{ product.name }}</td><td>{{ product.category.name }}</td><td>{{ product.sku }}</td><td><span class="report-status low">{{ product.quantity }}</span></td></tr>
+                        {% empty %}<tr><td colspan="4">No products at or below the low-stock threshold.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="report-note">Stock value is estimated using selling price, not purchase cost.</p>
+        </div>
+        <div class="report-subsection">
+            <h3>Top products by sales</h3>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>Product</th><th>Units sold</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                        {% for product in top_selling_products %}
+                        <tr><td>{{ product.name }}</td><td>{{ product.units }}</td><td>₹{{ product.revenue|floatformat:2 }}</td></tr>
+                        {% empty %}<tr><td colspan="3">No product sales in this period.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="report-section" id="audit-trail">
+    <div class="report-section-heading">
+        <div>
+            <h2>Audit and fee generation</h2>
+            <p>Recorded attendance changes and fee-generation runs in the selected period</p>
+        </div>
+    </div>
+    <div class="report-columns">
+        <div class="report-subsection">
+            <h3>Attendance change history</h3>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>When</th><th>Student</th><th>Change</th><th>Changed by</th><th>Reason</th></tr></thead>
+                    <tbody>
+                        {% for audit in attendance_audits %}
+                        <tr>
+                            <td>{{ audit.changed_at|date:"d M Y, h:i A" }}</td>
+                            <td>{% if audit.attendance and audit.attendance.student %}<a class="report-inline-link" href="{% url 'student_profile' schema_name=tenant.schema_name student_id=audit.attendance.student_id %}">{{ audit.attendance.student.name }}</a>{% else %}Student #{{ audit.student_id_snapshot|default:"—" }}{% endif %}</td>
+                            <td>{{ audit.get_action_display }}<br><small>{{ audit.old_status|default:"—" }} → {{ audit.new_status|default:"—" }}</small></td>
+                            <td>{{ audit.changed_by.full_name|default:audit.changed_by_name|default:"System" }}</td>
+                            <td>{{ audit.reason|default:"—"|truncatechars:80 }}</td>
+                        </tr>
+                        {% empty %}<tr><td colspan="5">No attendance changes recorded in this period.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="report-subsection">
+            <h3>Fee generation runs</h3>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead><tr><th>Generated</th><th>Fee month</th><th>Run type</th><th>Created</th><th>Skipped</th><th>Triggered by</th></tr></thead>
+                    <tbody>
+                        {% for log in generation_logs %}
+                        <tr>
+                            <td>{{ log.generated_at|date:"d M Y, h:i A" }}</td>
+                            <td>{{ log.month }}/{{ log.year }}</td>
+                            <td>{{ log.get_log_type_display }}</td>
+                            <td>{{ log.created_count }}</td>
+                            <td>{{ log.skipped_existing|add:log.skipped_no_fee }}</td>
+                            <td>{{ log.triggered_by|default:"System" }}</td>
+                        </tr>
+                        {% empty %}<tr><td colspan="6">No fee-generation runs in this period.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
