@@ -3,6 +3,7 @@
 import re
 from difflib import SequenceMatcher
 from functools import lru_cache
+from html.parser import HTMLParser
 from pathlib import Path
 
 from django.conf import settings
@@ -190,6 +191,31 @@ PAGE_CATALOG = (
 )
 
 
+class _VisibleTemplateText(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.hidden_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {'script', 'style'}:
+            self.hidden_depth += 1
+            return
+        if self.hidden_depth:
+            return
+        for name, value in attrs:
+            if name in {'aria-label', 'alt', 'placeholder', 'title'} and value:
+                self.parts.append(value)
+
+    def handle_endtag(self, tag):
+        if tag in {'script', 'style'} and self.hidden_depth:
+            self.hidden_depth -= 1
+
+    def handle_data(self, data):
+        if not self.hidden_depth:
+            self.parts.append(data)
+
+
 def available_pages(tenant, schema_name):
     """Return only links that this tenant is allowed to access."""
     pages = []
@@ -328,6 +354,34 @@ def _documentation_sections():
                         'source': f'{folder}/{path.relative_to(root / folder)}',
                         'text': text[:2200],
                     })
+    template_root = root / 'templates' / 'tenant'
+    for path in template_root.rglob('*.html'):
+        try:
+            content = path.read_text(encoding='utf-8')
+        except OSError:
+            continue
+        content = re.sub(
+            r'{%\s*comment\s*%}.*?{%\s*endcomment\s*%}',
+            ' ', content, flags=re.DOTALL,
+        )
+        content = re.sub(r'{#.*?#}|{%.*?%}|{{.*?}}', ' ', content, flags=re.DOTALL)
+        parser = _VisibleTemplateText()
+        try:
+            parser.feed(content)
+        except Exception:
+            continue
+        text = re.sub(r'\s+', ' ', ' '.join(parser.parts)).strip()
+        if not text:
+            continue
+        source = f'templates/tenant/{path.relative_to(template_root)}'
+        title = f"Admin page: {path.relative_to(template_root).with_suffix('').as_posix().replace('/', ' ').replace('_', ' ').title()}"
+        chunk_size = 1800
+        for chunk_index, start in enumerate(range(0, len(text), chunk_size), start=1):
+            documents.append({
+                'title': f'{title} · part {chunk_index}',
+                'source': source,
+                'text': text[start:start + chunk_size],
+            })
     return tuple(documents)
 
 
@@ -337,6 +391,10 @@ def retrieve_documentation(message, limit=4):
     terms = {term for term in terms if len(term) > 2}
     if not terms:
         return []
+    if terms & {'stock', 'inventory', 'maal', 'product', 'products'}:
+        terms.update({'inventory', 'product', 'category', 'quantity', 'add', 'update'})
+    if terms & {'kaise', 'kese', 'how', 'karun', 'karo', 'kroo', 'add'}:
+        terms.update({'add', 'create', 'update', 'steps', 'product', 'category'})
     scored = []
     for section in _documentation_sections():
         content = _normalize(f"{section['title']} {section['text']}")

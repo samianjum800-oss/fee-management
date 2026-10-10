@@ -27,6 +27,16 @@
 .axis-ai-send { align-self: flex-end; min-width: 54px; min-height: 42px; padding: .55rem .7rem; border: 0; border-radius: 9px; background: #1769aa; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 .axis-ai-send:disabled { opacity: .55; cursor: wait; }
 .axis-ai-privacy { padding: 0 .85rem .5rem; color: var(--muted); font-size: .68rem; }
+.axis-ai-consent { position: absolute; inset: 60px 0 0; z-index: 2; display: grid; align-content: center; gap: .85rem; overflow-y: auto; padding: 1.15rem; background: var(--surface); }
+.axis-ai-consent[hidden] { display: none; }
+.axis-ai-consent h3 { margin: 0; font-size: 1.05rem; }
+.axis-ai-consent p { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.5; }
+.axis-ai-consent label { display: flex; gap: .6rem; align-items: flex-start; font-size: .82rem; line-height: 1.4; }
+.axis-ai-consent input { margin-top: .15rem; accent-color: #1769aa; }
+.axis-ai-consent-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.axis-ai-consent-actions button { min-height: 40px; padding: .55rem .7rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-alt); color: var(--text); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.axis-ai-consent-actions button.primary { border-color: #1769aa; background: #1769aa; color: #fff; }
+.axis-ai-consent-actions button:disabled { opacity: .5; cursor: not-allowed; }
 @keyframes axisAiIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 600px) {
     .axis-ai-launcher { right: 14px; bottom: max(14px, env(safe-area-inset-bottom)); }
@@ -40,13 +50,13 @@
     <span>AXIS AI</span>
 </button>
 
-<section class="axis-ai-panel" id="axis-ai-panel" role="dialog" aria-modal="false" aria-labelledby="axis-ai-title" aria-hidden="true" data-endpoint="{% url 'ai_assistant_api' schema_name=tenant.schema_name %}" data-current-path="{{ request.path|escape }}">
+<section class="axis-ai-panel" id="axis-ai-panel" role="dialog" aria-modal="false" aria-labelledby="axis-ai-title" aria-hidden="true" data-endpoint="{% url 'ai_assistant_api' schema_name=tenant.schema_name %}" data-current-path="{{ request.path|escape }}" data-provider-ready="{{ ai_assistant_provider_ready|yesno:'true,false' }}" data-provider-data-sharing="{{ ai_assistant_provider_data_enabled|yesno:'true,false' }}">
     <header class="axis-ai-header">
         <div class="axis-ai-heading"><strong id="axis-ai-title">AXIS School Assistant</strong><small>{{ tenant.name }} · private school workspace</small></div>
         <button class="axis-ai-close" id="axis-ai-close" type="button" aria-label="Close assistant">×</button>
     </header>
     <div class="axis-ai-messages" id="axis-ai-messages" role="log" aria-live="polite" aria-relevant="additions">
-        <div class="axis-ai-message">Assalam-o-alaikum! Main students/staff profiles dhoond sakta hoon, student ka pending fee balance aur aaj ki attendance summary bata sakta hoon, aur enabled admin pages ke links de sakta hoon. Sawal Roman Urdu ya English mein poochhein.</div>
+        <div class="axis-ai-message" data-ai-welcome>Assalam-o-alaikum! School ke records, reports, classes, fees, attendance aur enabled admin pages ke baare mein Roman Urdu ya English mein poochhein.</div>
     </div>
     <div class="axis-ai-suggestions" aria-label="Suggested questions">
         <button type="button" data-ai-prompt="Sami name ke kitne students hain?">Student dhoondhein</button>
@@ -56,10 +66,25 @@
         <button type="button" data-ai-prompt="Attendance report kholo">Attendance report</button>
         <button type="button" data-ai-prompt="Fee collection kahan hai?">Fee collection</button>
     </div>
-    <p class="axis-ai-privacy">Local search hamesha isi school mein hoti hai.{% if ai_assistant_provider_data_enabled %} Admin ne external AI data sharing enable ki hai; read-only tool results provider ko ja sakte hain.{% else %} School records external AI ko share nahin hote.{% endif %}</p>
+    <p class="axis-ai-privacy">Har nayi chat ke start par privacy mode select karein. Data mode mein read-only queries sirf is school ke enabled modules tak scoped hoti hain.</p>
     <form class="axis-ai-form" id="axis-ai-form">
         <textarea id="axis-ai-input" maxlength="500" rows="1" aria-label="Ask AXIS Assistant" placeholder="Apna sawal likhein…" required></textarea>
         <button class="axis-ai-send" id="axis-ai-send" type="submit">Send</button>
     </form>
+    <div class="axis-ai-consent" id="axis-ai-consent" hidden aria-labelledby="axis-ai-consent-title">
+        <h3 id="axis-ai-consent-title">Choose privacy mode</h3>
+        <p>Private mode keeps school-data queries inside this school's database and does not send records to an AI provider. AI data mode may send your question and relevant student, parent, staff, financial, free-text, or other school records to the configured AI provider for this chat. Queries are read-only and scoped to this school; the assistant cannot change records or access another school. Passwords and biometric credentials are never available to it.</p>
+        {% if ai_assistant_provider_data_enabled %}
+        <label><input type="checkbox" id="axis-ai-consent-checkbox"> I understand and allow the AI provider to process relevant school records for this chat.</label>
+        {% else %}
+        <p>External AI data mode is unavailable because the platform provider or its data-sharing policy is not configured. Private local tools and school guides remain available.</p>
+        {% endif %}
+        <div class="axis-ai-consent-actions">
+            {% if ai_assistant_provider_data_enabled %}
+            <button class="primary" id="axis-ai-consent-allow" type="button" disabled>Allow for this chat</button>
+            {% endif %}
+            <button id="axis-ai-consent-private" type="button">Continue privately</button>
+        </div>
+    </div>
 </section>
 <script src="{% static 'js/ai_assistant.js' %}" defer></script>

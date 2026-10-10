@@ -50,6 +50,47 @@ def extract_student_name_lookup(message):
     return None
 
 
+def extract_student_parent_lookup(message):
+    """Extract a parent/father name from a question asking which student they belong to."""
+    text = normalize_message(message)
+    name_pattern = r"(?P<name>[a-z0-9][a-z0-9 .'-]{1,78}?)"
+    patterns = (
+        rf'{name_pattern}\s+(?:kis|which)\s+(?:bache|bachay|student|child)\b',
+        rf'\b(?:which|what)\s+(?:student|child)\s+(?:has|has the|belongs to)\s+(?:father|parent|guardian)\s+(?:named\s+)?{name_pattern}$',
+        rf'{name_pattern}\s+(?:ke|ka)\s+(?:bache|bachay|student)\s+(?:kaun|kon|who)\b',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            name = _clean_name(match.group('name'))
+            if name:
+                return name
+    return None
+
+
+def extract_class_pending_fee(message):
+    """Extract a grade and section for a current outstanding-fee question."""
+    text = normalize_message(message)
+    asks_pending = bool(re.search(
+        r'\b(pending|remaining|outstanding|baqaya|due)\b', text,
+    ))
+    mentions_fee = bool(re.search(r'\b(fee|fees)\b', text))
+    if not asks_pending or not mentions_fee:
+        return None
+
+    patterns = (
+        r'\b(?:class|grade)\s*(?P<grade>[a-z0-9][a-z0-9 -]{0,20}?)\s+(?:section\s*)?(?P<section>[a-z])\b',
+        r'\b(?P<grade>\d{1,2})\s*-?\s*(?P<section>[a-z])\b',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            grade = re.sub(r'\s+', ' ', match.group('grade')).strip(' -')
+            if grade:
+                return grade, match.group('section').upper()
+    return None
+
+
 def extract_staff_name_lookup(message):
     text = normalize_message(message)
     name_pattern = r"(?P<name>[a-z0-9][a-z0-9 .'-]{0,78}?)"
@@ -101,11 +142,11 @@ def is_school_data_question(message):
     """Prevent private operational questions from reaching an external LLM."""
     text = normalize_message(message)
     mentions_school_data = bool(re.search(
-        r'\b(student|students|talib|taliba|fee|fees|payment|receipt|attendance|hazri|hajri|staff|teacher|class|section|leave|chutti|stock|inventory|guardian|parent|defaulter|salary|profile|record|detail|naam|name)\w*\b',
+        r'\b(student|students|talib|taliba|fee|fees|payment|receipt|attendance|hazri|hajri|staff|teacher|class|section|leave|chutti|stock|inventory|sale|sales|revenue|timetable|schedule|period|subject|product|guardian|parent|defaulter|salary|profile|record|detail|naam|name)\w*\b',
         text,
     ))
     requests_records = bool(re.search(
-        r'\b(how many|how much|count|total|number of|kitne|kitni|list|find|search|who|which|show|dikhao|pending|overdue|absent|present|late|paid|balance|marks|profile|details|record|records|kaun|kis)\b',
+        r'\b(how many|how much|count|total|number of|kitne|kitni|list|find|search|who|which|show|dikhao|pending|overdue|absent|present|late|paid|balance|marks|profile|details|record|records|collection|collected|revenue|average|sum|trend|between|last week|this week|last month|this month|last year|this year|kaun|kis)\b',
         text,
     ))
     return mentions_school_data and requests_records

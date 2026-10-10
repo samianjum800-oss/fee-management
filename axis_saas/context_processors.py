@@ -33,14 +33,15 @@ def staff_portal_features(request):
 
 
 def ai_assistant_context(request):
-    tenant = getattr(request, 'tenant', None)
-    sharing_allowed = (
-        getattr(settings, 'AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER', False)
-        and tenant is not None
-        and getattr(tenant, 'is_feature_enabled', lambda *_args: False)(
-            'ai_assistant_data_sharing', 'desktop'
-        )
+    provider_ready = bool(
+        getattr(settings, 'AI_ASSISTANT_API_KEY', '')
+        and getattr(settings, 'AI_ASSISTANT_MODEL', '')
+    )
+    platform_sharing_allowed = bool(
+        provider_ready
+        and getattr(settings, 'AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER', False)
     )
     return {
-        'ai_assistant_provider_data_enabled': sharing_allowed,
+        'ai_assistant_provider_ready': provider_ready,
+        'ai_assistant_provider_data_enabled': platform_sharing_allowed,
     }

@@ -30,7 +30,7 @@ AI_ASSISTANT_API_KEY = os.environ.get('AI_ASSISTANT_API_KEY', '')
 AI_ASSISTANT_MODEL = os.environ.get('AI_ASSISTANT_MODEL', '')
 AI_ASSISTANT_BASE_URL = os.environ.get('AI_ASSISTANT_BASE_URL', 'https://api.openai.com/v1')
 AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER = os.environ.get(
-    'AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER', ''
+    'AI_ASSISTANT_ALLOW_SCHOOL_DATA_TO_PROVIDER', 'true'
 ).strip().lower() in ('1', 'true', 'yes', 'on')
 # LEAVE_MANAGEMENT_HARDENING_V3: safe DEBUG default.
 # The previous logic inferred DEBUG=True whenever DATABASE_URL was

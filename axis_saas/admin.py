@@ -99,7 +99,7 @@ class SchoolClientForm(forms.ModelForm):
         help_text="Desktop modules enabled for this tenant."
     )
     mobile_features = forms.MultipleChoiceField(
-        choices=[choice for choice in SCHOOL_FEATURE_CHOICES if choice[0] not in ('ai_assistant', 'ai_assistant_data_sharing')],
+        choices=[choice for choice in SCHOOL_FEATURE_CHOICES if choice[0] != 'ai_assistant'],
         widget=forms.CheckboxSelectMultiple,
         required=False,
         help_text="Mobile modules enabled for this tenant."
@@ -144,11 +144,11 @@ class SchoolClientForm(forms.ModelForm):
         ]
         self.fields['desktop_features'].initial = features.get(
             'desktop',
-            [choice[0] for choice in SCHOOL_FEATURE_CHOICES if choice[0] not in ('ai_assistant', 'ai_assistant_data_sharing')],
+            [choice[0] for choice in SCHOOL_FEATURE_CHOICES if choice[0] != 'ai_assistant'],
         )
         self.fields['mobile_features'].initial = [
             feature for feature in features.get('mobile', [])
-            if feature not in ('ai_assistant', 'ai_assistant_data_sharing')
+            if feature != 'ai_assistant'
         ]
         self.fields['staff_portal_features'].initial = features.get('staff_portal', [])
 
@@ -171,12 +171,12 @@ class SchoolClientForm(forms.ModelForm):
             if not cleaned_data.get('desktop_features'):
                 cleaned_data['desktop_features'] = [
                     choice[0] for choice in SCHOOL_FEATURE_CHOICES
-                    if choice[0] not in ('ai_assistant', 'ai_assistant_data_sharing')
+                    if choice[0] != 'ai_assistant'
                 ]
             if 'mobile' in categories and not cleaned_data.get('mobile_features'):
                 cleaned_data['mobile_features'] = [
                     choice[0] for choice in SCHOOL_FEATURE_CHOICES
-                    if choice[0] not in ('ai_assistant', 'ai_assistant_data_sharing')
+                    if choice[0] != 'ai_assistant'
                 ]
             if 'staff_portal' in categories and not cleaned_data.get('staff_portal_features'):
                 cleaned_data['staff_portal_features'] = [choice[0] for choice in STAFF_PORTAL_FEATURE_CHOICES]
@@ -185,9 +185,6 @@ class SchoolClientForm(forms.ModelForm):
             if 'staff_portal' not in categories:
                 cleaned_data['staff_portal_features'] = []
             desktop_features = set(cleaned_data.get('desktop_features') or [])
-            if 'ai_assistant_data_sharing' in desktop_features and 'ai_assistant' not in desktop_features:
-                desktop_features.discard('ai_assistant_data_sharing')
-                cleaned_data['desktop_features'] = list(desktop_features)
         return cleaned_data
 
     def save(self, commit=True):
