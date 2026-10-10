@@ -26,6 +26,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-for-build-on
 PUBLIC_URL = os.environ.get('PUBLIC_URL') or os.environ.get('APP_URL') or os.environ.get('SITE_URL') or 'http://localhost:8000'
 WEBAUTHN_RP_ID = os.environ.get('WEBAUTHN_RP_ID') or urlparse(PUBLIC_URL).hostname or 'localhost'
 WEBAUTHN_ORIGIN = os.environ.get('WEBAUTHN_ORIGIN') or PUBLIC_URL.rstrip('/')
+AI_ASSISTANT_API_KEY = os.environ.get('AI_ASSISTANT_API_KEY', '')
+AI_ASSISTANT_MODEL = os.environ.get('AI_ASSISTANT_MODEL', '')
+AI_ASSISTANT_BASE_URL = os.environ.get('AI_ASSISTANT_BASE_URL', 'https://api.openai.com/v1')
 # LEAVE_MANAGEMENT_HARDENING_V3: safe DEBUG default.
 # The previous logic inferred DEBUG=True whenever DATABASE_URL was
 # missing, which meant a mis-deployed container (forgotten env var)
