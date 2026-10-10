@@ -22,18 +22,18 @@ from functools import wraps
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from ..models import (
+from ...models import (
     SchoolClient, Student, FeeStructure, FeeRecord, PaymentTransaction,
     SchoolFeeSettings, Product, ProductCategory, SaleItem, Staff,
     StaffCredential, StaffAttendance, StudentAttendance, LeaveRequest,
     StudentLeave, AttendanceAuditLog, SchoolClass, Subject, TimetableEntry,
 )
-from ..forms import StudentForm, FeeCollectionForm, FeeSettingsForm, FeeStructureForm, FamilyPaymentForm
+from ...forms import StudentForm, FeeCollectionForm, FeeSettingsForm, FeeStructureForm, FamilyPaymentForm
 from django.http import JsonResponse, HttpResponse
 from django.db import transaction
-from ..models import ManualGenerationLog
+from ...models import ManualGenerationLog
 
-from .helpers import *
+from ..helpers import *
 from axis_saas.utils.class_display import get_class_display_for_student, get_class_display_name
 
 @require_tenant_type(['school'])
@@ -446,7 +446,7 @@ def reports(request, schema_name, force_mobile=False):
         'staff_count': len(staff_members),
         'academic_totals': academic_totals,
     }
-    template = 'mobile/reports.html' if force_mobile else 'tenant/reports.html'
+    template = 'tenant/reports/mobile.html' if force_mobile else 'tenant/reports/overview.html'
     return render(request, template, context)
 
 @require_tenant_type(['school'])

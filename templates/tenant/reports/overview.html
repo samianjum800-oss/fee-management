@@ -374,7 +374,26 @@
 [data-theme="dark"] .report-status.pending, [data-theme="dark"] .report-status.late, [data-theme="dark"] .report-status.low { color: #fde68a; background: #78350f; }
 .report-inline-link { color: var(--primary); font-weight: 600; text-decoration: none; }
 .report-inline-link:hover { text-decoration: underline; }
+.report-page-actions { display: flex; align-items: center; }
+.attendance-report-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0.7rem 1.15rem;
+    border: 1px solid #2563eb;
+    border-radius: 0.6rem;
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 750;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+.attendance-report-cta:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
 @media (max-width: 640px) {
+    .page-header { align-items: flex-start; flex-direction: column; gap: 0.75rem; }
+    .attendance-report-cta { width: 100%; }
     .report-section { padding: 0.8rem; }
     .report-section-heading { flex-direction: column; }
     .filter-row { align-items: stretch; }
@@ -389,6 +408,11 @@
         <h1 class="page-title">School Reports</h1>
         <p class="page-desc">Financial, academic, attendance, staff, leave and inventory activity for {{ start_date|date:"d M Y" }} to {{ end_date|date:"d M Y" }}</p>
     </div>
+    {% if tenant|has_feature:'attendance_management' %}
+    <div class="report-page-actions">
+        <a class="attendance-report-cta" href="{% url 'attendance_report' schema_name=tenant.schema_name %}">Open attendance report</a>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Advanced Filters -->
@@ -429,7 +453,8 @@
 
 <nav class="report-jump-nav" aria-label="Report sections">
     <a href="#school-overview">School overview</a>
-    <a href="#attendance">Attendance</a>
+    {% if tenant|has_feature:'attendance_management' %}<a href="{% url 'attendance_report' schema_name=tenant.schema_name %}">Attendance report</a>{% endif %}
+    <a href="#attendance">Overview</a>
     <a href="#staff-portal">Staff portal</a>
     <a href="#leave">Leave</a>
     <a href="#inventory">Inventory &amp; sales</a>

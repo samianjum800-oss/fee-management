@@ -26,6 +26,14 @@ The page summarizes balances by grade, highlights students with the largest pend
 
 The online indicator reflects the staff session signal and its expiry. A sign-in timestamp is not proof that someone is still using the portal; use the attendance record and staff profile for operational follow-up.
 
+## Attendance deep dive
+
+Open **Attendance report** from the Reports page to visit `/portal/<school>/reports/attedence/`. Choose a date range, campus, wing, class, section, source, or period. The page compares campus/wing/class rates, shows daily trends and marking sources, and provides expandable student-level and individual-record tables. Student profiles, class pages, and the attendance-management page are linked from the relevant rows.
+
+Use **Download filtered CSV** to export individual marks with date, student, class, period, status, source, marker, and remarks. For a single selected date, the page also lists active classes without a full-day mark; period-only marks do not count as a full-day completion.
+
+The attendance assistant currently provides private, deterministic insights from the visible report data; there is no configured generative-AI provider. Questions and student data stay in the browser. The reported attendance rate is based on recorded marks, not scheduled school days; period-based marks count as separate entries.
+
 ## Follow up on a defaulter
 
 1. Open **Defaulters**.
