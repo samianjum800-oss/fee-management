@@ -447,6 +447,10 @@ def api_add_bunch(request, schema_name):
         break_duration = int(data.get('break_duration') or 0)
     except (TypeError, ValueError):
         break_duration = 0
+    if break_duration < 0:
+        return JsonResponse(
+            {'error': 'Break duration cannot be negative'}, status=400,
+        )
     days = data.get('days') or []
     # HARDENING_V5: a client sending "days": "Monday" would
     # iterate characters below and hit 'M'.get(...) -> 500.

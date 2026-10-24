@@ -146,6 +146,37 @@ class TimetableAPITestBase(TestCase):
 # api_save_day_schedules
 # =====================================================================
 
+class CentralTimetableWorkspaceTests(TimetableAPITestBase):
+
+    def test_workspace_shows_timetable_inventory_and_setup_actions(self):
+        with schema_context(self.tenant.schema_name):
+            label = ScheduleLabel.objects.create(name="Senior")
+            PeriodsTimetable.objects.create(
+                title="Senior Morning",
+                label=label,
+                days=[{
+                    "day_of_week": 0,
+                    "day_label": "Monday",
+                    "start": "08:00",
+                    "end": "12:00",
+                    "periods_count": 4,
+                    "periods": [
+                        {"order": 1, "start": "08:00", "end": "09:00", "is_break": False},
+                        {"order": 2, "start": "09:00", "end": "10:00", "is_break": False},
+                    ],
+                }],
+            )
+
+        response = self.client.get(self.url("timetable/"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Create New Timetable")
+        self.assertContains(response, "Senior Morning")
+        self.assertContains(response, "Preview timetable")
+        self.assertContains(response, "Assign teachers")
+        self.assertEqual(len(response.context["timetable_cards"]), 1)
+        self.assertEqual(response.context["timetable_cards"][0]["period_count"], 2)
+
 class SaveDaySchedulesTests(TimetableAPITestBase):
 
     def test_create_update_delete_in_one_call(self):
@@ -274,6 +305,26 @@ class SaveDaySchedulesTests(TimetableAPITestBase):
 # =====================================================================
 
 class AddBunchTests(TimetableAPITestBase):
+
+    def test_negative_break_duration_returns_400(self):
+        with schema_context(self.tenant.schema_name):
+            ScheduleLabel.objects.create(name="Senior")
+
+        response = self._post_json(
+            "api/timetable/periods/bunch/add/",
+            {
+                "title": "Negative Break",
+                "label": "Senior",
+                "break_duration": -10,
+                "days": [
+                    {"day": 0, "start": "08:00", "end": "14:00",
+                     "periods": 8, "break_after": 4},
+                ],
+            },
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertIn("negative", response.json()["error"].lower())
 
     def test_break_swallows_entire_day_returns_400(self):
         """A break that eats the whole class window -> HTTP 400."""

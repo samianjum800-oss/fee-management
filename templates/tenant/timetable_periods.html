@@ -1148,6 +1148,10 @@
     (function () {
         var params = new URLSearchParams(window.location.search);
         var highlightId = params.get('highlight');
+        var editId = params.get('edit');
+        if (editId && /^\d+$/.test(editId)) {
+            setTimeout(function () { openEditForm(Number(editId)); }, 250);
+        }
         if (!highlightId) return;
         setTimeout(function () {
             var el = container.querySelector('[data-tt-id="' + highlightId + '"]');
