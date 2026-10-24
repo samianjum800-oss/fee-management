@@ -6,6 +6,7 @@ from datetime import datetime, date, timedelta
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.db import transaction, IntegrityError
+from django.db.models import Count
 from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -15,7 +16,7 @@ from ..models import (
     AcademicCalendar, Holiday, Period, TimetableEntry,
     SchoolClass, Subject, Staff, DaySchedule,
     WeeklyHoliday, AnnualHoliday, Vacation, ScheduleLabel,
-    PeriodsTimetable,
+    PeriodsTimetable, ClassTimetableAssignment,
 )
 from .helpers import get_tenant, require_tenant_type, require_school_feature
 
@@ -151,9 +152,46 @@ def timetable_management(request, schema_name):
             # Table may not exist yet if migrations haven't run
             has_period_timetables = False
 
+        timetable_rows = list(
+            PeriodsTimetable.objects
+            .select_related('label')
+            .annotate(assigned_class_count=Count('class_assignments'))
+            .order_by('label__name', 'title', 'id')
+        )
+        timetable_cards = []
+        for timetable in timetable_rows:
+            timetable_days = timetable.days or []
+            timetable_cards.append({
+                'id': timetable.id,
+                'title': timetable.title,
+                'label': timetable.label.name if timetable.label_id else '',
+                'days': timetable_days,
+                'day_count': len(timetable_days),
+                'period_count': sum(
+                    1 for day in timetable_days
+                    for period in (day.get('periods') or [])
+                    if not period.get('is_break')
+                ),
+                'assigned_class_count': timetable.assigned_class_count,
+            })
+        active_class_count = classes.count()
+        assigned_class_count = (
+            ClassTimetableAssignment.objects
+            .filter(school_class__is_active=True)
+            .values('school_class_id')
+            .distinct()
+            .count()
+        )
+
     context = {
         'tenant': tenant,
         'has_period_timetables': has_period_timetables,
+        'timetable_cards': timetable_cards,
+        'timetable_dashboard_data': timetable_cards,
+        'slots_by_label_data': slots_by_label,
+        'active_class_count': active_class_count,
+        'assigned_class_count': assigned_class_count,
+        'unassigned_class_count': max(0, active_class_count - assigned_class_count),
         'calendar': calendar,
         'periods': periods,
         'holidays': holidays,

@@ -266,17 +266,185 @@
         font-size: 0.85rem;
         line-height: 1.4;
     }
+
+    .workspace-hero { display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap; margin:0 0 1.25rem; }
+    .workspace-hero h2 { margin:0; font-size:1.15rem; }
+    .workspace-hero p { color:var(--muted); margin:.3rem 0 0; }
+    .workspace-actions { display:flex; gap:.55rem; flex-wrap:wrap; align-items:center; }
+    .workspace-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin-bottom:1rem; }
+    .workspace-stat { padding:.85rem 1rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); }
+    .workspace-stat strong { display:block; font-size:1.35rem; line-height:1.2; }
+    .workspace-stat span { color:var(--muted); font-size:.82rem; }
+    .workspace-list { display:grid; gap:.75rem; }
+    .workspace-item { padding:1rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); }
+    .workspace-item-top { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; }
+    .workspace-item h3 { margin:0; font-size:1.05rem; }
+    .workspace-item-meta { color:var(--muted); font-size:.84rem; margin-top:.3rem; }
+    .workspace-item-actions { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; }
+    .workspace-item-actions a, .workspace-item-actions button { font:inherit; }
+    .workspace-item-summary { display:flex; gap:1rem; flex-wrap:wrap; margin:.8rem 0 0; color:var(--muted); font-size:.84rem; }
+    .workspace-preview { margin-top:.75rem; border-top:1px solid var(--border); padding-top:.65rem; }
+    .workspace-preview summary, .workspace-menu summary { cursor:pointer; color:var(--primary); font-weight:600; }
+    .workspace-day-preview { display:flex; gap:.5rem 1rem; flex-wrap:wrap; padding:.5rem 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+    .workspace-day-preview:last-child { border-bottom:0; }
+    .workspace-menu { position:relative; }
+    .workspace-menu summary { list-style:none; width:34px; height:34px; display:grid; place-items:center; border:1px solid var(--border); border-radius:5px; color:var(--text); font-size:1.25rem; }
+    .workspace-menu summary::-webkit-details-marker { display:none; }
+    .workspace-menu[open] .workspace-menu-items { position:absolute; right:0; z-index:3; min-width:180px; padding:.35rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); box-shadow:var(--shadow-sm); }
+    .workspace-menu-items a, .workspace-menu-items button { display:block; width:100%; padding:.55rem .65rem; color:var(--text); text-align:left; text-decoration:none; border:0; background:none; border-radius:4px; cursor:pointer; }
+    .workspace-menu-items a:hover, .workspace-menu-items button:hover { background:var(--surface-alt); }
+    .workspace-menu-items .danger { color:#b91c1c; }
+    .workspace-setup { margin:1.5rem 0; }
+    .workspace-setup > summary { padding:1rem; cursor:pointer; font-weight:650; border:1px solid var(--border); border-radius:6px; background:var(--surface); }
+    .workspace-setup[open] > summary { margin-bottom:1rem; }
+    .workspace-overlay { position:fixed; inset:0; z-index:100100; display:none; align-items:center; justify-content:center; padding:1rem; background:rgba(17,24,39,.64); backdrop-filter:blur(3px); }
+    .workspace-overlay.active { display:flex; }
+    .workspace-dialog { width:min(760px,100%); max-height:92vh; overflow:auto; padding:1.25rem; border:1px solid var(--border); border-radius:8px; background:var(--surface); box-shadow:0 24px 70px rgba(0,0,0,.3); }
+    .workspace-dialog-head { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+    .workspace-dialog-head h2 { margin:0; font-size:1.3rem; }
+    .workspace-dialog-head p { margin:.3rem 0 0; color:var(--muted); font-size:.88rem; }
+    .workspace-close { width:36px; height:36px; border:1px solid var(--border); border-radius:5px; background:var(--surface-alt); cursor:pointer; font-size:1.2rem; }
+    .workspace-steps { display:flex; gap:.5rem; margin:1.2rem 0; padding:0; list-style:none; }
+    .workspace-steps li { flex:1; padding:.55rem; border-bottom:2px solid var(--border); color:var(--muted); font-size:.82rem; }
+    .workspace-steps li[aria-current="step"] { color:var(--primary); border-color:var(--primary); font-weight:700; }
+    .workspace-field { margin:.85rem 0; }
+    .workspace-field label { display:block; margin-bottom:.35rem; font-weight:600; font-size:.87rem; }
+    .workspace-field input, .workspace-field select { width:100%; min-height:40px; padding:.55rem .65rem; border:1px solid var(--border); border-radius:5px; color:var(--text); background:var(--surface-alt); }
+    .workspace-slot-list { display:grid; gap:.5rem; max-height:40vh; overflow:auto; margin-top:.75rem; }
+    .workspace-slot { display:grid; grid-template-columns:auto minmax(0,1fr) 170px; gap:.7rem; align-items:center; padding:.7rem; border:1px solid var(--border); border-radius:5px; }
+    .workspace-slot small { display:block; color:var(--muted); }
+    .workspace-slot select { width:100%; padding:.4rem; border:1px solid var(--border); border-radius:4px; background:var(--surface-alt); color:var(--text); }
+    .workspace-error { min-height:1.3rem; color:#b91c1c; font-size:.86rem; }
+    .workspace-wizard-actions { display:flex; justify-content:space-between; gap:.5rem; margin-top:1.2rem; padding-top:1rem; border-top:1px solid var(--border); }
+    .workspace-wizard-actions button { min-height:38px; padding:.5rem .85rem; border:1px solid var(--border); border-radius:5px; cursor:pointer; }
+    .workspace-wizard-actions .primary { color:#fff; background:var(--primary); border-color:var(--primary); }
+    .workspace-wizard-actions button:disabled { opacity:.5; cursor:not-allowed; }
+    @media (max-width:680px) {
+        .workspace-stats { grid-template-columns:1fr; }
+        .workspace-slot { grid-template-columns:auto minmax(0,1fr); }
+        .workspace-slot select { grid-column:2; }
+        .workspace-item-actions { width:100%; }
+        .workspace-steps li { font-size:.74rem; }
+    }
 </style>
 {% endblock %}
 
 {% block body %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Time‑Table Management</h1>
-        <p class="page-desc">Define working days, timings, and periods for your school</p>
+        <h1 class="page-title">Timetable Workspace</h1>
+        <p class="page-desc">Build schedules, assign classes, and manage teacher coverage from one place.</p>
     </div>
+    <button type="button" class="btn-primary btn-lg" id="openTimetableWizard">+ Create New Timetable</button>
 </div>
 
+<section aria-label="Timetable overview">
+    <div class="workspace-stats">
+        <div class="workspace-stat"><strong>{{ timetable_cards|length }}</strong><span>Timetables</span></div>
+        <div class="workspace-stat"><strong>{{ assigned_class_count }} / {{ active_class_count }}</strong><span>Classes with a timetable</span></div>
+        <div class="workspace-stat"><strong>{{ unassigned_class_count }}</strong><span>Classes still to assign</span></div>
+    </div>
+    <div class="workspace-hero">
+        <div><h2>Schedules</h2><p>Review each timetable and continue setup where you left off.</p></div>
+        <nav class="workspace-actions" aria-label="Timetable actions">
+            <a class="btn-secondary" href="{% url 'timetable_assignments' schema_name=tenant.schema_name %}">Assign to classes</a>
+            <a class="btn-secondary" href="{% url 'timetable_assign_teachers' schema_name=tenant.schema_name %}">Assign teachers</a>
+            <a class="btn-secondary" href="#calendarSetup">Calendar setup</a>
+        </nav>
+    </div>
+
+    {% if timetable_cards %}
+    <div class="workspace-list">
+        {% for timetable in timetable_cards %}
+        <article class="workspace-item" data-timetable-id="{{ timetable.id }}">
+            <div class="workspace-item-top">
+                <div>
+                    <h3>{{ timetable.title }}</h3>
+                    <div class="workspace-item-meta">{{ timetable.label|default:"Unlabelled" }} · {{ timetable.day_count }} day{{ timetable.day_count|pluralize }} · {{ timetable.period_count }} periods</div>
+                </div>
+                <div class="workspace-item-actions">
+                    <a class="btn-secondary btn-sm" href="{% url 'timetable_periods' schema_name=tenant.schema_name %}?highlight={{ timetable.id }}">View</a>
+                    <a class="btn-primary btn-sm" href="{% url 'timetable_periods' schema_name=tenant.schema_name %}?highlight={{ timetable.id }}&amp;edit={{ timetable.id }}">Edit</a>
+                    <details class="workspace-menu">
+                        <summary aria-label="More actions">⋮</summary>
+                        <div class="workspace-menu-items">
+                            <a href="{% url 'timetable_assignments' schema_name=tenant.schema_name %}">Manage class assignments</a>
+                            <a href="{% url 'timetable_assign_teachers' schema_name=tenant.schema_name %}">Manage teacher assignments</a>
+                            <button class="danger" type="button" data-delete-timetable="{{ timetable.id }}" data-timetable-title="{{ timetable.title|escape }}">Delete timetable</button>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            <div class="workspace-item-summary">
+                <span>{{ timetable.assigned_class_count }} class{{ timetable.assigned_class_count|pluralize }} assigned</span>
+                {% if timetable.days %}<span>{% for day in timetable.days %}{{ day.day_label }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+            </div>
+            <details class="workspace-preview">
+                <summary>Preview timetable</summary>
+                {% for day in timetable.days %}
+                <div class="workspace-day-preview"><strong>{{ day.day_label }} · {{ day.start }}–{{ day.end }}</strong><span>
+                    {% for period in day.periods %}{% if period.is_break %}Break {{ period.start }}–{{ period.end }}{% else %}P{{ period.order }} {{ period.start }}–{{ period.end }}{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}
+                </span></div>
+                {% empty %}<p class="text-muted">No days are configured.</p>{% endfor %}
+            </details>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="text-align:center; padding:2rem;">
+        <h2 style="margin:.1rem 0 .5rem; font-size:1.15rem;">No timetables yet</h2>
+        <p class="text-muted">Set up your academic calendar slots, then create the first timetable.</p>
+        <div class="workspace-actions" style="justify-content:center;">
+            <button type="button" class="btn-primary" data-open-wizard>Start timetable setup</button>
+            <a class="btn-secondary" href="#calendarSetup">Configure calendar slots</a>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+{{ timetable_dashboard_data|json_script:"timetable-dashboard-data" }}
+{{ slots_by_label_data|json_script:"timetable-slots-data" }}
+
+<div class="workspace-overlay" id="timetableWizard" aria-hidden="true">
+    <section class="workspace-dialog" role="dialog" aria-modal="true" aria-labelledby="wizardTitle">
+        <div class="workspace-dialog-head">
+            <div><h2 id="wizardTitle">Create timetable</h2><p>Define the schedule, choose its days, then review before saving.</p></div>
+            <button class="workspace-close" type="button" data-close-wizard aria-label="Close">×</button>
+        </div>
+        <ol class="workspace-steps" aria-label="Creation steps">
+            <li aria-current="step" data-step-indicator="1">1. Details</li>
+            <li data-step-indicator="2">2. Days and periods</li>
+            <li data-step-indicator="3">3. Review</li>
+        </ol>
+        <div data-wizard-step="1">
+            <div class="workspace-field"><label for="wizardTitleInput">Timetable name</label><input id="wizardTitleInput" maxlength="150" required placeholder="e.g. Senior Morning Schedule"></div>
+            <div class="workspace-field"><label for="wizardLabel">Schedule group</label><select id="wizardLabel" required><option value="">Choose a group</option>{% for label in schedule_labels %}<option value="{{ label.name|escape }}">{{ label.name }}</option>{% endfor %}</select></div>
+            {% if not schedule_labels %}<p class="text-muted">Create a schedule group in <a href="#calendarSetup">Calendar setup</a> first.</p>{% endif %}
+        </div>
+        <div data-wizard-step="2" hidden>
+            <div class="workspace-field"><label for="wizardBreakDuration">Break duration (minutes)</label><input id="wizardBreakDuration" type="number" min="0" max="240" value="15"></div>
+            <p class="text-muted">Choose available calendar days and set each day’s break position.</p>
+            <div class="workspace-slot-list" id="wizardSlotList"></div>
+        </div>
+        <div data-wizard-step="3" hidden>
+            <h3 style="margin:.2rem 0 .75rem;">Review timetable</h3>
+            <div id="wizardReview"></div>
+        </div>
+        <p class="workspace-error" id="wizardError" role="alert" aria-live="polite"></p>
+        <div class="workspace-wizard-actions">
+            <button type="button" data-wizard-back disabled>Back</button>
+            <div class="workspace-actions">
+                <button type="button" data-close-wizard>Cancel</button>
+                <button type="button" class="primary" data-wizard-next>Continue</button>
+                <button type="button" class="primary" data-wizard-save hidden>Save timetable</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<details class="workspace-setup" id="calendarSetup">
+    <summary>Academic calendar, slots, and holidays</summary>
+    <div>
 <!-- ====== ACADEMIC CALENDAR ====== -->
 <div class="card">
     <div class="card-header">
@@ -506,6 +674,9 @@
     {% endif %}
 </div>
 
+    </div>
+</details>
+
 <!-- ===== SLOT MODAL ===== -->
 <div id="slotModal" class="slot-modal-overlay">
     <div class="slot-modal-box">
@@ -555,6 +726,214 @@
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    'use strict';
+
+    const overlay = document.getElementById('timetableWizard');
+    if (!overlay) return;
+    const slotsByLabel = JSON.parse(document.getElementById('timetable-slots-data').textContent || '{}');
+    const timetables = JSON.parse(document.getElementById('timetable-dashboard-data').textContent || '[]');
+    const titleInput = document.getElementById('wizardTitleInput');
+    const labelSelect = document.getElementById('wizardLabel');
+    const slotList = document.getElementById('wizardSlotList');
+    const errorBox = document.getElementById('wizardError');
+    const backButton = overlay.querySelector('[data-wizard-back]');
+    const nextButton = overlay.querySelector('[data-wizard-next]');
+    const saveButton = overlay.querySelector('[data-wizard-save]');
+    const usedSlots = new Set();
+    let currentStep = 1;
+
+    timetables.forEach(function (timetable) {
+        (timetable.days || []).forEach(function (day) {
+            usedSlots.add([timetable.label, day.day_of_week, day.start, day.end].join('|'));
+        });
+    });
+
+    function csrfToken() {
+        const token = document.cookie.split('; ').find(function (item) {
+            return item.startsWith('csrftoken=');
+        });
+        return token
+            ? decodeURIComponent(token.split('=').slice(1).join('='))
+            : (document.querySelector('meta[name="csrf-token"]')?.content || '');
+    }
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char];
+        });
+    }
+
+    function selectedSlots() {
+        return Array.from(slotList.querySelectorAll('[data-wizard-slot]:checked'));
+    }
+
+    function renderSlots() {
+        slotList.innerHTML = '';
+        const label = labelSelect.value;
+        const slots = slotsByLabel[label] || [];
+        if (!slots.length) {
+            slotList.innerHTML = '<p class="text-muted">No calendar slots exist for this group. Add slots in Calendar setup first.</p>';
+            return;
+        }
+        slots.forEach(function (slot) {
+            const key = [label, slot.day, slot.start, slot.end].join('|');
+            const alreadyUsed = usedSlots.has(key);
+            const row = document.createElement('label');
+            row.className = 'workspace-slot';
+            const options = ['<option value="">No break</option>'];
+            for (let period = 1; period < Number(slot.periods); period += 1) {
+                options.push('<option value="' + period + '">After period ' + period + '</option>');
+            }
+            row.innerHTML = '<input type="checkbox" data-wizard-slot data-day="' + Number(slot.day) + '" data-day-label="' + escapeHtml(slot.day_label) + '" data-start="' + escapeHtml(slot.start) + '" data-end="' + escapeHtml(slot.end) + '" data-periods="' + Number(slot.periods) + '"' + (alreadyUsed ? ' disabled' : '') + '>' +
+                '<span><strong>' + escapeHtml(slot.day_label) + (alreadyUsed ? ' · Already used' : '') + '</strong><small>' + escapeHtml(slot.start) + '–' + escapeHtml(slot.end) + ' · ' + Number(slot.periods) + ' periods</small></span>' +
+                '<select aria-label="Break position for ' + escapeHtml(slot.day_label) + '"' + (alreadyUsed ? ' disabled' : '') + '>' + options.join('') + '</select>';
+            const checkbox = row.querySelector('[data-wizard-slot]');
+            const breakSelect = row.querySelector('select');
+            breakSelect.disabled = true;
+            checkbox.addEventListener('change', function () {
+                breakSelect.disabled = !checkbox.checked;
+            });
+            slotList.appendChild(row);
+        });
+    }
+
+    function setStep(step) {
+        currentStep = step;
+        overlay.querySelectorAll('[data-wizard-step]').forEach(function (panel) {
+            panel.hidden = Number(panel.dataset.wizardStep) !== step;
+        });
+        overlay.querySelectorAll('[data-step-indicator]').forEach(function (indicator) {
+            if (Number(indicator.dataset.stepIndicator) === step) indicator.setAttribute('aria-current', 'step');
+            else indicator.removeAttribute('aria-current');
+        });
+        backButton.disabled = step === 1;
+        nextButton.hidden = step === 3;
+        saveButton.hidden = step !== 3;
+        errorBox.textContent = '';
+    }
+
+    function openWizard() {
+        titleInput.value = '';
+        labelSelect.value = '';
+        document.getElementById('wizardBreakDuration').value = '15';
+        slotList.innerHTML = '';
+        setStep(1);
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        titleInput.focus();
+    }
+
+    function closeWizard() {
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function makeReview() {
+        const selected = selectedSlots();
+        const summary = selected.map(function (checkbox) {
+            const breakAfter = checkbox.parentElement.querySelector('select').value;
+            return '<li><strong>' + escapeHtml(checkbox.dataset.dayLabel) + '</strong>: ' +
+                escapeHtml(checkbox.dataset.start) + '–' + escapeHtml(checkbox.dataset.end) + ', ' +
+                Number(checkbox.dataset.periods) + ' periods' +
+                (breakAfter ? ', break after period ' + Number(breakAfter) : ', no break') + '</li>';
+        }).join('');
+        document.getElementById('wizardReview').innerHTML =
+            '<p><strong>' + escapeHtml(titleInput.value.trim()) + '</strong> · ' + escapeHtml(labelSelect.value) + '</p>' +
+            '<p>Break duration: ' + Number(document.getElementById('wizardBreakDuration').value || 0) + ' minutes</p>' +
+            '<ul>' + summary + '</ul>';
+    }
+
+    document.querySelectorAll('#openTimetableWizard, [data-open-wizard]').forEach(function (button) {
+        button.addEventListener('click', openWizard);
+    });
+    overlay.querySelectorAll('[data-close-wizard]').forEach(function (button) {
+        button.addEventListener('click', closeWizard);
+    });
+    overlay.addEventListener('click', function (event) {
+        if (event.target === overlay) closeWizard();
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && overlay.classList.contains('active')) closeWizard();
+    });
+    labelSelect.addEventListener('change', renderSlots);
+    backButton.addEventListener('click', function () { setStep(Math.max(1, currentStep - 1)); });
+    nextButton.addEventListener('click', function () {
+        if (currentStep === 1) {
+            if (!titleInput.reportValidity() || !labelSelect.reportValidity()) return;
+            renderSlots();
+        } else if (currentStep === 2) {
+            if (!selectedSlots().length) {
+                errorBox.textContent = 'Choose at least one available day to continue.';
+                return;
+            }
+            makeReview();
+        }
+        setStep(Math.min(3, currentStep + 1));
+    });
+
+    saveButton.addEventListener('click', async function () {
+        const selected = selectedSlots();
+        const payload = {
+            title: titleInput.value.trim(),
+            label: labelSelect.value,
+            break_duration: Number(document.getElementById('wizardBreakDuration').value || 0),
+            days: selected.map(function (checkbox) {
+                return {
+                    day: Number(checkbox.dataset.day),
+                    start: checkbox.dataset.start,
+                    end: checkbox.dataset.end,
+                    periods: Number(checkbox.dataset.periods),
+                    break_after: checkbox.parentElement.querySelector('select').value || null,
+                };
+            }),
+        };
+        saveButton.disabled = true;
+        errorBox.textContent = '';
+        try {
+            const response = await fetch('{% url "api_timetable_periods_bunch_add" schema_name=tenant.schema_name %}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken()},
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to save this timetable.');
+            window.location.reload();
+        } catch (error) {
+            errorBox.textContent = error.message || 'Network error. Please try again.';
+            saveButton.disabled = false;
+        }
+    });
+
+    document.querySelectorAll('[data-delete-timetable]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const id = Number(button.dataset.deleteTimetable);
+            const title = button.dataset.timetableTitle || 'this timetable';
+            if (!window.confirm('Permanently delete "' + title + '"?')) return;
+            const url = '{% url "api_timetable_periods_bunch_delete" schema_name=tenant.schema_name %}';
+            const headers = {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken()};
+            try {
+                let response = await fetch(url, {method: 'POST', headers: headers, body: JSON.stringify({id: id})});
+                let data = await response.json();
+                if (response.status === 409 && data.requires_force) {
+                    const count = Number(data.assigned_class_count || 0);
+                    if (!window.confirm(count + ' class(es) currently use this timetable. Deleting it will unassign them. Continue?')) return;
+                    response = await fetch(url, {method: 'POST', headers: headers, body: JSON.stringify({id: id, force: true})});
+                    data = await response.json();
+                }
+                if (!response.ok || !data.success) throw new Error(data.error || 'Unable to delete this timetable.');
+                window.location.reload();
+            } catch (error) {
+                window.alert(error.message || 'Network error. Please try again.');
+            }
+        });
+    });
+})();
+</script>
 
 <!-- ===== CUSTOM ALERT & CONFIRM MODALS ===== -->
 <div id="customAlertModal" class="custom-modal-overlay">
